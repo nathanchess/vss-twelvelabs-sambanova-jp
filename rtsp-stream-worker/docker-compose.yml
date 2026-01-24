@@ -1,0 +1,15 @@
+services:
+  rtsp-stream-worker:
+    build: .
+    container_name: rtsp-stream-worker
+    image: rtsp-stream-worker:latest
+    ports:
+      - "8000:8000" # FastAPI server
+    env_file:
+      - .env
+    restart: always
+    # Recommended for AWS EC2: set memory limits based on instance type
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
