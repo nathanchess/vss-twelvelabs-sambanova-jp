@@ -1,4 +1,4 @@
-## NVIDIA GTC 2025 — TwelveLabs × NVIDIA VSS × SambaNova: Real‑Time Manufacturing Compliance with Japanese Localization
+## TwelveLabs × SambaNova: Real‑Time Manufacturing Compliance with Japanese Localization
 
 ### Live Video Demo
 [![Live Video Demo](https://img.youtube.com/vi/opYVHSc77ZQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=opYVHSc77ZQ&feature=youtu.be)
