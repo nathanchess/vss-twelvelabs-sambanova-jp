@@ -7,7 +7,7 @@
 ![System Architecture](assets/architecture.png)
 
 ### Lucidchart
-- Interactive architecture diagram: [Lucidchart](https://lucid.app/lucidchart/6b6215f6-b49d-4ca5-92a4-e677dba3eb12/edit?invitationId=inv_b73efd38-0dde-43ef-8477-e1ae471f0aa1)
+- Interactive architecture diagram: [Lucidchart](https://lucid.app/lucidchart/6b6215f6-b49d-4ca5-92a4-e677dba3eb12/edit?view_items=Btd0nwM30jrE%2ChQxr4Y4DlnCh%2C-QxrfD_WH6H4%2CCvORI8JyIbz~%2CtjORgPrJhxG9%2CyUARgwYy8Y0o%2CGSAR-aiSj937%2C5dORpU7Wh4qf%2CEpd0XYFRHKDd%2CDXARe87ECMCs%2C1mORJpJQlD~z%2CvdORk_IEL0.1%2CoVARHCqIVMN9%2COtd0cJa94Rvn%2C7mORQl0jMg4Y%2CHvORjH_tO8ID%2CcuORrDzDjC~6%2CTtORDiYQJbz5%2C~cORjtaRqfFL%2C~SAR2Zh-a_Zu%2CUTARyxLhg5G0%2CaOAR56ydih-6%2C_dORbqUfxjsW%2CLUAR8IXFb6Oj%2CHXART4aNYtoq%2CxNORp.5Ja7UR%2CzjORsnG9ovdb%2CoaORu~rH9WqG%2CscORYMg-xNpO%2CFpd0-~jZCfd~%2CgUORqKFvDrl2%2ClQxrydogM2zz%2COSAR.Pcun8NA%2C5NOR-CDBel9u%2C_TARZ_W6zzmu%2COyd1atJFSJux%2C_~NRKkeMWXWV%2CBaOR99vUsxba%2CQNORf1.FBuwy%2CTyd1eiOQsZHC%2CV9ORnO.OGA_H%2CGXAR3daYCqv0&page=0_0&invitationId=inv_b73efd38-0dde-43ef-8477-e1ae471f0aa1)
 
 ### Overview
 
