@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-    title: "NVIDIA VSS + Twelve Labs Manufacturing Automation",
+    title: "Sambanova + Twelve Labs Manufacturing Automation",
     description: "AI-powered video surveillance and analytics for manufacturing automation",
 };
 

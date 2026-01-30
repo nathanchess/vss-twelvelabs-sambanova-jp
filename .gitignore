@@ -13,7 +13,6 @@
 
 /rtsp-stream-worker/temp
 /rtsp-stream-worker/mediamtx
-/rtsp-stream-worker/preset
 
 __pycache__*
 

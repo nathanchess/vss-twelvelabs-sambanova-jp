@@ -25,8 +25,8 @@ export default function NavBar() {
             {/* NVIDIA Logo */}
             <div className="relative h-30 w-30 flex-shrink-0">
               <Image
-                src="/nvidia.jpg"
-                alt="NVIDIA Logo"
+                src="/sambanova_logo.png"
+                alt="Sambanova Logo"
                 fill
                 className="object-contain filter brightness-110"
               />
