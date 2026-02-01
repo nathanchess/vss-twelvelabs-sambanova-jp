@@ -1,4 +1,4 @@
-## Frontend (Next.js) — TwelveLabs × NVIDIA VSS × SambaNova UI
+## Frontend (Next.js) — TwelveLabs × SambaNova
 
 This is the Next.js app that powers the search, analysis, agent chatbot, and reporting UI for the manufacturing compliance automation system.
 
@@ -32,7 +32,7 @@ Create a `.env.local` in `frontend/` with the following keys:
 AWS_ACCESS_KEY_ID=""
 AWS_SECRET_ACCESS_KEY=""
 AWS_REGION=""
-AWS_SOURCE_S3_BUCKET='nvidia-vss-source'
+AWS_SOURCE_S3_BUCKET='source-bucket'
 
 # TwelveLabs
 TWELVELABS_API_KEY=""
@@ -44,7 +44,6 @@ SAMBANOVA_API_KEY=""
 
 # Services
 NEXT_PUBLIC_RTSP_STREAM_WORKER_URL="http://localhost:8000/"
-NEXT_PUBLIC_VSS_BASE_URL="http://127.0.0.1:8080/"
 ```
 
 For production, rotate and store secrets securely (e.g., Vercel env, Vault).
@@ -61,7 +60,7 @@ Open http://localhost:3000 to use the app.
 ### Features
 
 - 🎬 Action video with live HLS streams
-- 🔍 Video search and chaptering via NVIDIA VSS
+- 🔍 Video search and chaptering via TwelveLabs Marengo
 - 🤖 Agent chatbot for Q&A over videos (TwelveLabs Pegasus)
 - 📊 Instant compliance report generator
 - 📤 Upload and analyze videos
@@ -69,4 +68,4 @@ Open http://localhost:3000 to use the app.
 
 ### Assets & Branding
 
-Logos in `public/` are used to indicate the NVIDIA GTC 2025 collaboration.
+Logos in `public/` are used for branding and partner acknowledgements.

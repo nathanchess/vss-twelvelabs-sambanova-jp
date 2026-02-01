@@ -26,14 +26,14 @@ export default function ClipSort({ clipData = [], onFilterChange }) {
   const [isSearching, setIsSearching] = useState(false);
 
   const exampleQueries = [
-    "Worker coughing or sick near the CNC machine",
-    "Safety equipment not being worn properly",
-    "Machinery malfunction or unusual vibrations",
-    "Product defects on assembly line",
-    "Unauthorized personnel in restricted areas",
-    "Spillage or hazardous material on floor",
-    "Equipment overheating or sparking",
-    "Quality control issues with finished products"
+    { en: "Worker coughing or sick near the CNC machine", jp: "CNC機械近くで咳をしているまたは病気の作業者" },
+    { en: "Safety equipment not being worn properly", jp: "安全装備が正しく着用されていない" },
+    { en: "Machinery malfunction or unusual vibrations", jp: "機械の故障または異常な振動" },
+    { en: "Product defects on assembly line", jp: "組立ラインでの製品欠陥" },
+    { en: "Unauthorized personnel in restricted areas", jp: "制限区域への無許可者の立ち入り" },
+    { en: "Spillage or hazardous material on floor", jp: "床への流出または危険物質" },
+    { en: "Equipment overheating or sparking", jp: "機器の過熱または火花" },
+    { en: "Quality control issues with finished products", jp: "完成品の品質管理問題" }
   ];
 
   const sortOptions = [
@@ -97,67 +97,47 @@ export default function ClipSort({ clipData = [], onFilterChange }) {
     }
 
     setIsSearching(true);
-    try {
 
+    try {
       const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, groupBy: 'clip', threshold: 'none' })
-      })
+        body: JSON.stringify({ query: query, groupBy: 'video', threshold: 'none' })
+      });
 
       const data = await response.json();
-      const json_data = data['data'];
+      const searchResults = data['data'];
 
-      console.log("Search response:", data);
-
-      // Sort data by score (highest first)
-      const sortedData = json_data.sort((a, b) => b.score - a.score);
-
-      console.log("Sorted data:", sortedData);
+      console.log("Search response:", searchResults);
 
       // Convert clips to array if it's an object
       const clipsArray = Array.isArray(clips) ? clips : Object.values(clips);
 
-      console.log("Clips array:", clipsArray);
-
-      // Debug: Log the IDs we're trying to match
-      console.log("Search result videoIds:", sortedData.map(r => r.videoId));
-      console.log("Clip IDs:", clipsArray.map(c => ({ id: c.id, vss_id: c.vss_id, systemMetadata_vss_id: c.systemMetadata?.vss_id })));
-
-      // First, deduplicate results by videoId, keeping the highest scoring one
-      const deduplicatedResults = sortedData.reduce((acc, result) => {
-        const existing = acc.find(r => r.videoId === result.videoId);
-        if (!existing || result.score > existing.score) {
-          // Remove existing if it has lower score, or add new result
-          const filtered = acc.filter(r => r.videoId !== result.videoId);
-          return [...filtered, result];
-        }
-        return acc;
-      }, []);
-
-      console.log("Deduplicated results:", deduplicatedResults);
-
-      // Map the deduplicated results back to clip data with search scores
-      const sortedClips = deduplicatedResults.map(result => {
-        // Find the corresponding clip from clipsArray by trying multiple ID fields
-        const clip = clipsArray.find(c =>
-          c.id === result.videoId ||
-          c.vss_id === result.videoId ||
-          c.systemMetadata?.vss_id === result.videoId
+      // Map search results back to original clips
+      // Search results format: [{id: "videoId", clips: [{score, start, end, videoId, confidence}]}]
+      const sortedClips = searchResults.map(result => {
+        // Find matching clip from original clipData by trying multiple ID fields
+        const matchingClip = clipsArray.find(clip =>
+          clip.id === result.id ||
+          clip.vss_id === result.id ||
+          clip.systemMetadata?.vss_id === result.id
         );
-        if (clip) {
-          console.log(`Found matching clip for videoId ${result.videoId}:`, clip.id);
-          // Add search score and confidence to the clip data
+
+        if (matchingClip) {
+          // Get the highest score from the clips array (first one since they're usually sorted)
+          const bestClip = result.clips[0];
           return {
-            ...clip,
-            searchScore: result.score,
-            searchConfidence: result.confidence
+            ...matchingClip,
+            searchScore: bestClip?.score || 0,
+            searchConfidence: bestClip?.confidence || 'unknown'
           };
-        } else {
-          console.log(`No matching clip found for videoId: ${result.videoId}`);
         }
+
+        console.log(`No matching clip found for videoId: ${result.id}`);
         return null;
-      }).filter(Boolean); // Remove any undefined results
+      }).filter(Boolean); // Remove null entries
+
+      console.log("Sorted clips with scores:", sortedClips);
 
       return sortedClips;
 
@@ -248,7 +228,7 @@ export default function ClipSort({ clipData = [], onFilterChange }) {
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 font-inter mb-3">
                 <SparklesIcon className="inline h-4 w-4 mr-2 text-lime-500" />
-                AI-Powered Semantic Search
+                {t('aiPoweredSemanticSearch', language)}
               </label>
 
               {/* Search Input */}
@@ -260,7 +240,7 @@ export default function ClipSort({ clipData = [], onFilterChange }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowExamples(true)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Search clips by content, behavior, or safety incidents..."
+                  placeholder={t('searchPlaceholder', language)}
                   className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-lime-500 focus:border-lime-500 transition-all duration-200 font-inter placeholder-gray-500"
                 />
 
@@ -283,18 +263,18 @@ export default function ClipSort({ clipData = [], onFilterChange }) {
                   ></div>
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 z-40 animate-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-gray-100">
-                      <h3 className="text-sm font-semibold text-gray-900 font-inter mb-2">Example Searches</h3>
-                      <p className="text-xs text-gray-600">Click any example to try it out</p>
+                      <h3 className="text-sm font-semibold text-gray-900 font-inter mb-2">{t('exampleSearches', language)}</h3>
+                      <p className="text-xs text-gray-600">{t('clickToTry', language)}</p>
                     </div>
                     <div className="max-h-64 overflow-y-auto p-2">
                       {exampleQueries.map((example, index) => (
                         <button
                           key={index}
-                          onClick={() => handleExampleClick(example)}
+                          onClick={() => handleExampleClick(language === 'jp' ? example.jp : example.en)}
                           className="cursor-pointer w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150 font-inter"
                         >
                           <SparklesIcon className="inline h-3 w-3 mr-2 text-lime-500" />
-                          {example}
+                          {language === 'jp' ? example.jp : example.en}
                         </button>
                       ))}
                     </div>

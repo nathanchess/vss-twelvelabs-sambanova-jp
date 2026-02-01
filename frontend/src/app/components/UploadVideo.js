@@ -10,7 +10,10 @@ import {
 import { useLanguage } from '../context/LanguageContext';
 import { t } from '../lib/translations';
 
+import { TwelveLabs, TwelvelabsApi } from 'twelvelabs-js';
+
 export default function UploadVideo() {
+
   const { language } = useLanguage();
   const [isDragOver, setIsDragOver] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -23,43 +26,21 @@ export default function UploadVideo() {
     setUploadError(null);
     setShowSuccessModal(false);
 
-    const VSS_BASE_URL = process.env.NEXT_PUBLIC_VSS_BASE_URL;
-
-    if (!VSS_BASE_URL) {
-      console.error("No VSS base URL found");
-      setUploadError("Configuration error: No VSS base URL found");
-      setIsUploading(false);
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('purpose', 'vision');
-    formData.append('media_type', 'video');
-
     try {
-      console.log("Uploading to:", `${VSS_BASE_URL}/files`);
 
-      const response = await fetch(`${VSS_BASE_URL}/files`, {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       });
 
-      console.log("Upload response status:", response.status);
+      const data = await response.json();
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Failed to upload video:", response.status, errorText);
-        setUploadError(`Upload failed: ${response.status} ${response.statusText}`);
-        setIsUploading(false);
-        return {
-          success: false,
-          message: "Failed to upload video"
-        }
+        throw new Error(data.error);
       }
-
-      const data = await response.json();
-      const fileId = data.id;
 
       console.log("Video uploaded successfully", data);
 
@@ -72,7 +53,6 @@ export default function UploadVideo() {
 
       return {
         success: true,
-        fileId: fileId,
         message: "Video uploaded successfully"
       }
 

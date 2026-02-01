@@ -44,28 +44,7 @@ export default function Clips() {
 
   const loadClipData = async () => {
 
-    const VSS_BASE_URL = process.env.NEXT_PUBLIC_VSS_BASE_URL;
-
-    if (!VSS_BASE_URL) {
-      console.error("No VSS base URL found");
-      return;
-    }
-
-    console.log("Loading clip data");
-
     try {
-
-      console.log("Fetching VSS file data");
-
-      // Fetch NVIDIA VSS file data mappings for VSS ID and file name.
-      const vss_response = await fetch(`${VSS_BASE_URL}/files?purpose=vision`);
-
-      if (!vss_response.ok) {
-        console.error("Failed to load clip data");
-        return;
-      }
-      const vss_data = await vss_response.json();
-      const vss_file_data = vss_data['data'];
 
       // Fetch Twelve Labs for file data and file name.
       const response = await fetch('/api/video', {
@@ -91,34 +70,14 @@ export default function Clips() {
         }
       }
 
-      console.log(data)
-
       const textileFactoryActivated = localStorage.getItem('TextileFactory') !== null;
       const constructionSiteActivated = localStorage.getItem('ConstructionSite') !== null;
       const machineryFactoryActivated = localStorage.getItem('MachineryFactory') !== null;
-
-      console.log("Textile factory activated", textileFactoryActivated);
-      console.log("Construction site activated", constructionSiteActivated);
-      console.log("Machinery factory activated", machineryFactoryActivated);
-
-      // Map VSS file data to Twelve Labs file data and sample IDs.
-      for (let sampleId of sampleIds) {
-        const fileName = sampleId[0];
-        const vssId = sampleId[1];
-        if (fileName in data) {
-          data[fileName]['vss_id'] = vssId;
-        }
-      }
 
       for (let fileName in data) {
 
         const fileData = data[fileName];
         const pegasusId = fileData['pegasusId'];
-
-        console.log("Pegasus ID", pegasusId);
-        console.log("Textile factory preset", presetFactoryVideos['TextileFactory'].includes(pegasusId));
-        console.log("Construction site preset", presetFactoryVideos['ConstructionSite'].includes(pegasusId));
-        console.log("Machinery factory preset", presetFactoryVideos['MachineryFactory'].includes(pegasusId));
 
         if (pegasusId && presetFactoryVideos['TextileFactory'].includes(pegasusId) && textileFactoryActivated === false) {
           console.log("Deleting textile factory clip", fileName);
@@ -135,8 +94,6 @@ export default function Clips() {
           delete data[fileName];
         }
       }
-
-      console.log("Mapped data", data);
 
       setClipData(data);
 

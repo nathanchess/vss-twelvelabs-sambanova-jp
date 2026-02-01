@@ -11,17 +11,18 @@
 
 ### Overview
 
-This project is a close‑to‑real‑time manufacturing compliance automation system that integrates **TwelveLabs video intelligence** with **NVIDIA Video Search and Summarization (VSS)**. It continuously ingests live or archived video, runs computer‑vision PPE compliance checks, chunks processed video to NVIDIA VSS for indexing, and powers a frontend for search, analysis, and reporting.
+This project is a close‑to‑real‑time manufacturing compliance automation system powered by **TwelveLabs video intelligence**. It enables video upload, AI-powered semantic search, compliance analysis, and reporting through an intuitive frontend interface.
 
 The application includes **full Japanese language localization** powered by **SambaNova's Llama-3.3-Swallow-70B-Instruct model**, enabling seamless English ↔ Japanese translation of both static UI elements and dynamic AI-generated content.
 
 ### Key Features
 
-- 🎬 **Actionable video analytics** with TwelveLabs and NVIDIA VSS
+- 🎬 **Actionable video analytics** with TwelveLabs Marengo and Pegasus models
 - 🤖 **Agent chatbot** for video Q&A and insights
 - 📊 **Instant compliance report creator** (per shift/factory)
 - 📡 **Live stream simulation** via RTSP worker with HLS playback
 - 🎬 **Video chaptering**, event timeline, and clip generation
+- 🔍 **Semantic video search** powered by TwelveLabs Marengo
 - 🌐 **Japanese localization** via SambaNova Swallow model
 
 ### Japanese Localization (i18n)
@@ -40,13 +41,9 @@ Users can toggle between English (🇺🇸) and Japanese (🇯🇵) at any time.
 ### Repository Structure
 
 - `frontend/`: Next.js app for search, analytics, reporting UI, and Japanese localization
-- `rtsp-stream-worker/`: FastAPI + MediaMTX worker for RTSP/HLS, chunking, and uploads to NVIDIA VSS
+- `rtsp-stream-worker/`: FastAPI + MediaMTX worker for RTSP/HLS, chunking, and video uploads
 - `cv_model/`: PPE detection training scripts and training results
 - `assets/`: Images and diagrams (e.g., `architecture.png`)
-
-### Related NVIDIA VSS Blueprint
-
-- Forked baseline and concepts are informed by NVIDIA's blueprint: [NVIDIA VSS Repo (fork)](https://github.com/james-le-twelve-labs/nvidia-vss)
 
 ### Getting Started (High‑Level)
 
@@ -56,4 +53,4 @@ Users can toggle between English (🇺🇸) and Japanese (🇯🇵) at any time.
 
 ### Notes on Credentials
 
-Environment variables are required for AWS, TwelveLabs, SambaNova, and NVIDIA VSS endpoints. Place them in the respective `.env` files as described in sub‑module READMEs. Treat any shared keys as development‑only and rotate for production.
+Environment variables are required for AWS, TwelveLabs, and SambaNova endpoints. Place them in the respective `.env` files as described in sub‑module READMEs. Treat any shared keys as development‑only and rotate for production.

@@ -87,7 +87,8 @@ export const translations = {
         noFindings: 'No findings',
 
         // ClipSort - Search & Filter
-        searchPlaceholder: 'Search clips by description, keywords, or content...',
+        aiPoweredSemanticSearch: 'AI-Powered Semantic Search',
+        searchPlaceholder: 'Search clips by content, behavior, or safety incidents...',
         sortBy: 'Sort By',
         sortByDate: 'Date',
         sortByTime: 'Time',
@@ -321,7 +322,8 @@ export const translations = {
         noFindings: '発見なし',
 
         // ClipSort - Search & Filter
-        searchPlaceholder: '説明、キーワード、コンテンツでクリップを検索...',
+        aiPoweredSemanticSearch: 'AI搭載セマンティック検索',
+        searchPlaceholder: 'コンテンツ、行動、安全インシデントでクリップを検索...',
         sortBy: '並び替え',
         sortByDate: '日付',
         sortByTime: '時間',

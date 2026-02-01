@@ -51,26 +51,7 @@ export default function ClipDetailPage({ params }) {
 
     const loadClipData = async () => {
 
-        const VSS_BASE_URL = process.env.NEXT_PUBLIC_VSS_BASE_URL;
-
-        if (!VSS_BASE_URL) {
-            console.error("No VSS base URL found");
-            return;
-        }
-
         try {
-
-            /*
-            // Fetch NVIDIA VSS file data mappings for VSS ID and file name.
-            const vss_response = await fetch(`${VSS_BASE_URL}/files?purpose=vision`);
-
-            if (!vss_response.ok) {
-                console.error("Failed to load clip data");
-                return;
-            }
-            const vss_data = await vss_response.json();
-            const vss_file_data = vss_data['data'];
-            */
 
             const response = await fetch('/api/video', {
                 method: 'GET',
@@ -85,16 +66,6 @@ export default function ClipDetailPage({ params }) {
             }
 
             const data = await response.json();
-
-            /*
-            // Map VSS file data to Twelve Labs file data and sample IDs.
-            for (let fileData of vss_file_data) {
-                const fileName = fileData['filename'];
-                if (fileName in data) {
-                    data[fileName]['vss_id'] = fileData['id'];
-                }
-            }
-            */
 
             for (let sampleId of sampleIds) {
                 const fileName = sampleId[0];
