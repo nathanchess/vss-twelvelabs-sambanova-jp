@@ -103,13 +103,15 @@ export default function ClipDetailPage({ params }) {
 
             // SCANNING CHECKLIST & RULES //
             For each worker you identify, you MUST answer the following questions one by one. This forces you to look at each body part individually.
-            1.  **Head Protection:** Is a hard hat clearly visible? (Answer true/false)
-            2.  **Hand Protection:** Are gloves clearly visible? (Answer true/false). Look for texture, color, or cuff lines. If hands are obscured or out of frame, answer 'unknown'.
-            3.  **Eye Protection:** Are safety glasses visible? (Answer true/false). Look closely for reflections or frames.
-            4.  **Torso Protection:** Is a high-visibility vest or harness visible? (Answer true/false).
+            1.  **Head Protection:** Is a hard hat clearly visible? (Answer true/false/unknown)
+            2.  **Hand Protection:** Are gloves clearly visible? (Answer true/false/unknown). Look for texture, color, or cuff lines. If hands are obscured or out of frame, answer 'unknown'.
+            3.  **Eye Protection:** Are safety glasses visible? (Answer true/false/unknown). Look closely for reflections or frames.
+            4.  **Torso Protection:** Is a high-visibility vest or harness visible? (Answer true/false/unknown).
+
+            CRITICAL: If you answer 'unknown' for any item, it means you CANNOT confirm the worker has that protection. This is a compliance risk that MUST be reported.
 
             // REPORTING FORMAT //
-            Respond ONLY with a valid JSON object in the exact format below. Do not guess. If you are not 100% certain, answer false or 'unknown'.
+            Respond ONLY with a valid JSON object in the exact format below.
 
             {
             "workers": [
@@ -118,17 +120,8 @@ export default function ClipDetailPage({ params }) {
                 "ppe_status": {
                     "head_protection": true,
                     "hand_protection": true,
-                    "eye_protection": true,
+                    "eye_protection": "unknown",
                     "torso_protection": false
-                }
-                },
-                {
-                "description": "Person walking near scaffolding",
-                "ppe_status": {
-                    "head_protection": true,
-                    "hand_protection": "unknown", // Example for when hands are not visible
-                    "eye_protection": false,
-                    "torso_protection": true
                 }
                 }
             ]
@@ -167,69 +160,83 @@ export default function ClipDetailPage({ params }) {
         `;
 
         const prompt = `
-        You are a senior EHS (Environment, Health & Safety) forensic auditor conducting a detailed compliance audit of this factory video.
-        Your job is to identify ALL potential issues — not just obvious, present-danger violations, but also:
+        You are a senior EHS (Environment, Health & Safety) forensic auditor conducting a STRICT compliance audit of this factory video.
+        Your mandate: when in doubt, REPORT IT. It is far better to flag a potential issue than to miss a real violation.
+
+        ## CRITICAL RULE: UNKNOWN = VIOLATION
+        If you CANNOT clearly confirm that a worker is wearing required PPE (hard hat, gloves, safety glasses, vest, etc.), you MUST report it as a violation with a note that the status is UNVERIFIED/UNKNOWN. In a real OSHA audit, inability to demonstrate compliance IS a violation. Do NOT give workers the benefit of the doubt.
 
         ## STEP 1 — SYSTEMATIC VISUAL SCAN
-        Before generating findings, scan the video frame-by-frame and check EACH of these categories:
+        Scan the video and check EACH of these categories for EVERY worker:
 
         ### A. Personal Protective Equipment (PPE)
         - Hard hats, gloves, safety glasses, high-vis vests, steel-toe boots, hearing protection, face shields
-        - Check EVERY visible worker individually. Note partial compliance (e.g., hard hat on but no gloves).
+        - Check EVERY visible worker individually
+        - If PPE status is UNKNOWN or UNVERIFIABLE → report as violation (note: "status unverified")
+        - If PPE is clearly missing → report as violation
+        - If PPE is clearly present → report as positive compliance finding
 
         ### B. Housekeeping & Organization
-        - Cluttered walkways, unsecured tools/materials, tripping hazards, spills, loose cables/hoses
-        - Blocked emergency exits, fire extinguisher access, or electrical panels
-        - Debris, waste materials, or disorganized storage
+        - Cluttered walkways, unsecured tools/materials, tripping hazards, loose cables
+        - Blocked exits, fire extinguisher access, electrical panels
+        - Debris, disorganized storage
 
         ### C. Ergonomic & Body Mechanics
-        - Improper lifting posture, repetitive motions, awkward body positions
-        - Workers bending, reaching overhead, or twisting under load
+        - Improper lifting, repetitive motions, awkward positions
+        - Bending, overhead reaching, twisting under load
 
         ### D. Machine & Equipment Safety
-        - Missing machine guards, bypassed safety interlocks, lack of lockout/tagout indicators
-        - Workers operating near moving parts, pinch points, or crush zones without barriers
+        - Missing guards, bypassed interlocks, no lockout/tagout
+        - Workers near moving parts or crush zones without barriers
 
         ### E. Signage & Markings
-        - Missing or faded floor markings, lack of warning signs, missing safety data sheets
-        - Insufficient lighting in work areas
+        - Missing floor markings, warning signs, safety data sheets
+        - Insufficient lighting
 
-        ### F. Environmental & Process Hazards
-        - Fumes, dust, vapor without ventilation or respiratory protection
-        - Hot work (welding, cutting) near combustibles
+        ### F. Environmental Hazards
+        - Fumes/dust without ventilation or respiratory protection
+        - Hot work near combustibles
         - Noise exposure without hearing protection
 
-        ### G. Behavioral & Procedural
-        - Workers not following standard procedures (shortcuts, rushing)
-        - Lack of supervision in high-risk tasks
+        ### G. Behavioral, Procedural & Malpractice
+        - Workers taking shortcuts or rushing
+        - Lack of supervision during high-risk tasks
         - Workers in unauthorized zones
+        - Poor work practices that could lead to incidents over time
+        - Inefficient workflows, unnecessary movement, idle time
 
         ## STEP 2 — CLASSIFY SEVERITY
-        For each finding, assign a severity:
-        - **Critical**: Immediate danger to life or health (e.g., no fall protection at height)
-        - **Warning**: Regulatory violation that could result in OSHA fines (e.g., missing safety glasses)
-        - **Advisory**: Minor issue or bad practice that could escalate (e.g., cluttered workbench, poor posture)
+        - **Critical**: Immediate danger (no fall protection, live electrical exposure)
+        - **Warning**: OSHA-fineable violation (missing PPE, no machine guards, unknown PPE status)
+        - **Advisory**: Bad practice that could escalate (cluttered area, poor posture, inefficient process)
 
-        Report ALL severities. Do not skip Advisory-level issues — these are still real findings that result in fines during audits.
+        Report ALL severities. Advisory issues still result in fines during real audits.
 
-        ## STEP 3 — GENERATE FINDINGS
+        ## STEP 3 — IMPROVEMENTS & BEST PRACTICES
+        Also report any opportunities for improvement:
+        - Better workflow organization
+        - Additional safety measures that should be implemented
+        - Training recommendations
+        - Process optimizations
+
+        ## STEP 4 — GENERATE FINDINGS
         ${visualFactsContext}
 
         Each button should have:
-        - title: A concise title summarizing the issue or improvement.
-        - description: A detailed description explaining the issue, its implications, the relevant OSHA standard if applicable, and recommended corrective action.
+        - title: Concise title (e.g., "Eye Protection Status Unknown", "Cluttered Walkway", "Inefficient Material Handling")
+        - description: Detailed description with the relevant OSHA standard, severity level, and corrective action. If status is unknown, explicitly state: "PPE status could not be verified — this constitutes a compliance gap under OSHA [standard]."
         - category: One of: compliance, improvement, personal protective equipment.
-        - x: X coordinate as a percentage (0-100) pointing to the exact location of the issue in the video frame.
-        - y: Y coordinate as a percentage (0-100) pointing to the exact location of the issue in the video frame.
-        - start: Start time in seconds when the issue is visible.
-        - end: End time in seconds when the issue stops being visible.
-        - link: (optional) A general URL like "https://www.osha.gov" — do not generate deep or unverified links.
+        - x: X coordinate percentage (0-100) at the exact issue location.
+        - y: Y coordinate percentage (0-100) at the exact issue location.
+        - start: Start time in seconds.
+        - end: End time in seconds.
+        - link: (optional) General URL like "https://www.osha.gov".
         
-        IMPORTANT: Generate a finding for EVERY issue you observe, even minor ones. It is better to flag a potential Advisory-level concern than to miss a real violation. However, do NOT fabricate issues that are not supported by visual evidence. If a worker IS wearing proper PPE, note it as a positive "Safety Compliance" finding.
+        IMPORTANT: You MUST generate findings. Every factory video has at least some issues — if you see zero violations, you are not looking hard enough. Check for unknown PPE, housekeeping, ergonomics, and process improvements. Only report what you can see, but treat UNKNOWN PPE status as a reportable violation.
         
         Respond with a valid JSON array only, no markdown formatting.
 
-        [{"title": "Missing Hard Hat", "description": "Worker on the left side is not wearing a hard hat while near overhead hazards — OSHA 29 CFR 1926.100 violation. Recommend immediate compliance.", "category": "personal protective equipment", "x": 32, "y": 78, "start": 15, "end": 45, "link": "https://www.osha.gov"}]
+        [{"title": "Eye Protection Unverified", "description": "Worker's eye protection status cannot be confirmed from video — OSHA 29 CFR 1910.133 requires eye protection in industrial environments. Status: UNKNOWN. Recommend immediate verification.", "category": "personal protective equipment", "x": 45, "y": 30, "start": 0, "end": 14, "link": "https://www.osha.gov"}]
 
         `;
 
