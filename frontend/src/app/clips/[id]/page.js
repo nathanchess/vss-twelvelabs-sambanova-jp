@@ -514,7 +514,7 @@ export default function ClipDetailPage({ params }) {
                                         </div>
                                     ) : (
                                         <div className="text-sm text-gray-600">
-                                            We'll automatically check when the video is ready.
+                                            We&apos;ll automatically check when the video is ready.
                                         </div>
                                     )}
                                 </div>
