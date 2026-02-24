@@ -193,37 +193,41 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
 
             const prompt = `You are a senior EHS forensic auditor conducting a STRICT compliance audit. Your mandate: when in doubt, REPORT IT.
 
-            ## CRITICAL RULE: UNKNOWN = VIOLATION
+            ## TWO-PHASE ANALYSIS
+
+            ### PHASE 1: PPE ANALYSIS (use the visual facts below)
+            ${visualFactsContext}
             If you CANNOT clearly confirm a worker is wearing required PPE, report it as a violation with status UNVERIFIED/UNKNOWN. In a real OSHA audit, inability to demonstrate compliance IS a violation.
 
-            ${visualFactsContext}
+            ### PHASE 2: ENVIRONMENT & WORKPLACE ANALYSIS (use YOUR OWN visual observation of the video)
+            The visual facts above ONLY cover PPE. You MUST independently scan the video for ALL of the following. Do NOT limit yourself to PPE:
+
             ${locationContext}
 
-            ## SCANNING CATEGORIES
-            Check ALL of these for EVERY worker:
-            A. **PPE**: Hard hats, gloves, safety glasses, vests, boots, hearing/face protection. UNKNOWN status = report as violation.
-            B. **Housekeeping**: Cluttered walkways, unsecured tools, tripping hazards, blocked exits, debris.
-            C. **Ergonomics**: Improper lifting, awkward positions, repetitive strain risks.
-            D. **Machine Safety**: Missing guards, no lockout/tagout, workers near unguarded moving parts.
-            E. **Signage**: Missing floor markings, warning signs, insufficient lighting.
-            F. **Environmental**: Fumes/dust without protection, hot work near combustibles, noise without hearing protection.
-            G. **Behavioral & Malpractice**: Shortcuts, rushing, lack of supervision, poor work practices, inefficiencies.
+            ## MANDATORY SCANNING CHECKLIST — check EVERY item:
+            A. **PPE Compliance**: Use visual facts. UNKNOWN or false = violation.
+            B. **Tripping & Slip Hazards**: Loose cables, hoses, cords on floor? Wet/oily surfaces? Uneven flooring? Debris in walkways?
+            C. **Housekeeping & Storage**: Cluttered workstations? Unsecured tools/materials that could fall? Blocked exits or fire extinguishers? Disorganized storage?
+            D. **Ergonomic Risks**: Workers bending improperly? Reaching overhead repeatedly? Twisting under load? Awkward sustained postures?
+            E. **Machine & Equipment Safety**: Missing machine guards? Workers near pinch points or moving parts? No lockout/tagout visible? Bypassed safety interlocks?
+            F. **Signage & Markings**: Missing or faded floor markings? No warning signs near hazards? Missing safety data sheets? Inadequate lighting?
+            G. **Environmental Hazards**: Visible dust, fumes, or vapor? Hot work near combustibles? High noise areas without hearing protection? Inadequate ventilation?
+            H. **Electrical Hazards**: Exposed wiring? Overloaded outlets? Missing panel covers? Cables near water?
+            I. **Fire Safety**: Blocked fire exits? Missing or expired extinguishers? Combustible materials stored improperly?
+            J. **Behavioral & Malpractice**: Workers taking shortcuts? Rushing? Using tools improperly? Working without supervision on high-risk tasks? Poor practices that could cause injury over time?
 
-            ## SEVERITY CLASSIFICATION
-            - **high**: Immediate danger or clear OSHA violation (missing PPE, no guards) — fine $10,000-$16,000
-            - **medium**: Regulatory gap or unverified compliance (unknown PPE status) — fine $5,000-$10,000
-            - **low**: Bad practice that could escalate (poor posture, cluttered area) — fine $1,000-$5,000
+            ## SEVERITY & FINES
+            - **high**: Immediate danger or clear violation (missing PPE, no guards, exposed wiring) — $10,000-$16,000
+            - **medium**: Regulatory gap or unverified compliance (unknown PPE, missing signage, loose cables) — $5,000-$10,000
+            - **low**: Bad practice that could escalate (poor posture, clutter, minor housekeeping) — $1,000-$5,000
 
-            Report ALL severities. Unknown PPE = medium severity violation minimum.
-
-            ## ANALYSIS REQUIREMENTS
-            1. **OSHA Violations**: Cite specific regulation codes. Unknown PPE IS a violation.
-            2. **Root Cause Analysis**: Training Gap, Process Flaw, Equipment Issue, or Negligence.
-            3. **Corrective Actions**: SMART actions for each violation.
-            4. **Operational Efficiency**: Identify 7 Wastes of Lean (Muda).
-            5. **Financial Impact**: Estimate realistic OSHA fine amounts.
-
-            IMPORTANT: You MUST report violations. Every industrial video has issues. If you find zero violations, you are not looking hard enough. Check unknown PPE, housekeeping, ergonomics, and malpractices.
+            ## CRITICAL INSTRUCTIONS
+            1. You MUST generate AT LEAST 3 violations. Every industrial environment has issues.
+            2. Violations must be DIVERSE — do NOT only report PPE issues. Include at least one non-PPE violation (housekeeping, ergonomics, environmental, electrical, etc.)
+            3. For each violation, cite the specific OSHA regulation code.
+            4. Generate a corrective action for EACH violation.
+            5. Generate at least 2 risk factors.
+            6. If you genuinely see zero non-PPE issues, report potential risks based on the industrial environment type (e.g., "No anti-fatigue mats observed at standing workstations").
 
             Return ONLY a valid JSON object (no markdown):
 
@@ -236,32 +240,78 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
                     "severity": "medium",
                     "description": "Worker's eye protection status cannot be confirmed — OSHA 29 CFR 1910.133 requires eye protection in industrial environments. Status: UNVERIFIED.",
                     "timestamp": "00:00",
-                    "location": "Scaffolding Area",
+                    "location": "Work Area A",
                     "regulation": "OSHA 1910.133",
                     "rootCause": "Process Flaw",
                     "potentialFineUSD": 7500
+                },
+                {
+                    "id": 2,
+                    "type": "Housekeeping Violation",
+                    "severity": "medium",
+                    "description": "Loose cables and hoses crossing the walkway near the work area create a tripping hazard — OSHA 29 CFR 1910.22 requires clear, unobstructed walking surfaces.",
+                    "timestamp": "00:05",
+                    "location": "Main Walkway",
+                    "regulation": "OSHA 1910.22",
+                    "rootCause": "Process Flaw",
+                    "potentialFineUSD": 5000
+                },
+                {
+                    "id": 3,
+                    "type": "Ergonomic Risk",
+                    "severity": "low",
+                    "description": "Worker observed bending at the waist repeatedly to access materials at ground level without using proper lifting technique — risk of musculoskeletal injury per OSHA ergonomic guidelines.",
+                    "timestamp": "00:10",
+                    "location": "Material Staging Area",
+                    "regulation": "OSHA General Duty Clause 5(a)(1)",
+                    "rootCause": "Training Gap",
+                    "potentialFineUSD": 3000
                 }
                 ],
                 "scoringMethodology": "Base score of 100, with deductions for violations based on severity (High: -15, Medium: -10, Low: -5).",
-                "score": 90
+                "score": 75
             },
             "riskAssessment": {
                 "overallSafetyRisk": "medium",
-                "overallOperationalRisk": "low",
+                "overallOperationalRisk": "medium",
                 "riskFactors": [
                 {
-                    "factor": "Unverified Eye Protection",
+                    "factor": "Unverified PPE Compliance",
                     "level": "medium",
                     "impact": "Worker Safety"
+                },
+                {
+                    "factor": "Tripping Hazards in Walkway",
+                    "level": "medium",
+                    "impact": "Worker Safety & Liability"
+                },
+                {
+                    "factor": "Ergonomic Risk from Improper Lifting",
+                    "level": "low",
+                    "impact": "Long-term Worker Health"
                 }
                 ]
             },
             "correctiveActions": [
                 {
                 "violationId": 1,
-                "action": "Conduct immediate site inspection to verify eye protection compliance for all workers. Install mandatory PPE checkpoint.",
+                "action": "Conduct immediate PPE verification audit for all workers. Install PPE checkpoint at site entry.",
                 "assignee": "Safety Manager",
                 "dueDate": "2025-10-18",
+                "status": "Pending"
+                },
+                {
+                "violationId": 2,
+                "action": "Install cable management system and floor cord covers along main walkway. Conduct weekly housekeeping inspections.",
+                "assignee": "Facilities Manager",
+                "dueDate": "2025-10-20",
+                "status": "Pending"
+                },
+                {
+                "violationId": 3,
+                "action": "Provide ergonomic training on proper lifting techniques. Install elevated material racks to eliminate ground-level bending.",
+                "assignee": "Shift Supervisor",
+                "dueDate": "2025-10-25",
                 "status": "Pending"
                 }
             ],
@@ -274,16 +324,18 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
                 }
                 ],
                 "recommendations": [
-                    "Redesign tool storage layout to minimize unnecessary movement."
+                    "Redesign tool storage layout to minimize unnecessary movement.",
+                    "Implement 5S workspace organization program."
                 ]
             },
             "summary": {
                 "duration": "00:14",
                 "workersPresent": 3,
-                "safetyIncidents": 1,
+                "safetyIncidents": 3,
                 "keyFindings": [
-                    "Eye protection status UNKNOWN for all workers — reported as compliance gap under OSHA 1910.133. Immediate verification required.",
-                    "Operational inefficiency: tool layout causes unnecessary lateral movement."
+                    "Eye protection status UNKNOWN for workers — reported as compliance gap under OSHA 1910.133.",
+                    "Tripping hazard from loose cables in walkway — OSHA 1910.22 violation.",
+                    "Ergonomic risk from repeated improper bending — potential musculoskeletal injury."
                 ]
             }
         }
