@@ -138,13 +138,15 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
 
             // SCANNING CHECKLIST & RULES //
             For each worker you identify, you MUST answer the following questions one by one. This forces you to look at each body part individually.
-            1.  **Head Protection:** Is a hard hat clearly visible? (Answer true/false)
-            2.  **Hand Protection:** Are gloves clearly visible? (Answer true/false). Look for texture, color, or cuff lines. If hands are obscured or out of frame, answer 'unknown'.
-            3.  **Eye Protection:** Are safety glasses visible? (Answer true/false). Look closely for reflections or frames.
-            4.  **Torso Protection:** Is a high-visibility vest or harness visible? (Answer true/false).
+            1.  **Head Protection:** Is a hard hat clearly visible? (Answer true/false/unknown)
+            2.  **Hand Protection:** Are gloves clearly visible? (Answer true/false/unknown). Look for texture, color, or cuff lines. If hands are obscured or out of frame, answer 'unknown'.
+            3.  **Eye Protection:** Are safety glasses visible? (Answer true/false/unknown). Look closely for reflections or frames.
+            4.  **Torso Protection:** Is a high-visibility vest or harness visible? (Answer true/false/unknown).
+
+            CRITICAL: If you answer 'unknown' for any item, it means you CANNOT confirm the worker has that protection. This is a compliance risk that MUST be reported.
 
             // REPORTING FORMAT //
-            Respond ONLY with a valid JSON object in the exact format below. Do not guess. If you are not 100% certain, answer false or 'unknown'.
+            Respond ONLY with a valid JSON object in the exact format below.
 
             {
             "workers": [
@@ -153,17 +155,8 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
                 "ppe_status": {
                     "head_protection": true,
                     "hand_protection": true,
-                    "eye_protection": true,
+                    "eye_protection": "unknown",
                     "torso_protection": false
-                }
-                },
-                {
-                "description": "Person walking near scaffolding",
-                "ppe_status": {
-                    "head_protection": true,
-                    "hand_protection": "unknown", // Example for when hands are not visible
-                    "eye_protection": false,
-                    "torso_protection": true
                 }
                 }
             ]
@@ -198,37 +191,41 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
 
             console.log(visualFactsContext)
 
-            const prompt = `You are an expert industrial safety and compliance analyst. Analyze the factory video and generate a comprehensive forensics report in the exact JSON format specified below.
+            const prompt = `You are a senior EHS forensic auditor conducting a STRICT compliance audit. Your mandate: when in doubt, REPORT IT.
 
-            // CRUCIAL INSTRUCTIONS FOR ACCURACY & CONTEXT //
-            Before generating any part of the JSON, you MUST perform this 3-step process:
-            1.  **Review Facts:** Look at the 'VISUAL FACTS' provided below. These are your ground truth.
-            2.  **Analyze Context:** For each worker, identify their specific task (e.g., "operating press," "walking," "welding," "sewing").
-            3.  **Determine Requirement (This is the most important step):**
-                -   A "false" status from the VISUAL FACTS (e.g., 'eye_protection: false') is ONLY a **VIOLATION** if that PPE is *realistically required* for the *specific task* you observed.
-                -   If a worker is just walking or doing light assembly, 'eye_protection: false' is **NOT** a violation. If a worker is grinding, it **IS** a violation.
-                -   Use this same logic for all PPE. Do not report a violation unless the PPE is both missing AND required for the specific, visible task.
+            ## CRITICAL RULE: UNKNOWN = VIOLATION
+            If you CANNOT clearly confirm a worker is wearing required PPE, report it as a violation with status UNVERIFIED/UNKNOWN. In a real OSHA audit, inability to demonstrate compliance IS a violation.
 
             ${visualFactsContext}
             ${locationContext}
 
-            Based on the video content, analyze for the following, performing a Root Cause Analysis (RCA) for each identified issue:
-            1.  **OSHA Compliance Violations**: Identify specific infractions and cite the relevant regulation code.
-            2.  **Safety Risks**: Differentiate between unsafe *acts* (human error, behavior) and unsafe *conditions* (environmental or equipment hazards).
-            3.  **Corrective and Preventive Actions (CAPAs)**: For each violation, propose a specific, measurable, achievable, relevant, and time-bound (SMART) corrective action.
-            4.  **Operational Efficiency**: Identify instances of the 7 Wastes of Lean (Muda), such as unnecessary motion, waiting, or defects.
-            5.  **Financial & Operational Impact**: Estimate the potential cost of non-compliance and the impact of incidents on production.
+            ## SCANNING CATEGORIES
+            Check ALL of these for EVERY worker:
+            A. **PPE**: Hard hats, gloves, safety glasses, vests, boots, hearing/face protection. UNKNOWN status = report as violation.
+            B. **Housekeeping**: Cluttered walkways, unsecured tools, tripping hazards, blocked exits, debris.
+            C. **Ergonomics**: Improper lifting, awkward positions, repetitive strain risks.
+            D. **Machine Safety**: Missing guards, no lockout/tagout, workers near unguarded moving parts.
+            E. **Signage**: Missing floor markings, warning signs, insufficient lighting.
+            F. **Environmental**: Fumes/dust without protection, hot work near combustibles, noise without hearing protection.
+            G. **Behavioral & Malpractice**: Shortcuts, rushing, lack of supervision, poor work practices, inefficiencies.
 
-            Based on your context-aware analysis, generate the final report. If the site is fully compliant (0 violations), the 'violations', 'riskFactors', and 'correctiveActions' arrays MUST be empty and the 'score' MUST be 100.
+            ## SEVERITY CLASSIFICATION
+            - **high**: Immediate danger or clear OSHA violation (missing PPE, no guards) — fine $10,000-$16,000
+            - **medium**: Regulatory gap or unverified compliance (unknown PPE status) — fine $5,000-$10,000
+            - **low**: Bad practice that could escalate (poor posture, cluttered area) — fine $1,000-$5,000
 
-            Return ONLY a valid JSON object in this exact format (no markdown, no additional text).
+            Report ALL severities. Unknown PPE = medium severity violation minimum.
 
-            Rules:
-            1. Generate at least one improvement for operational efficiency placed into "operationalEfficiency" key in JSON response.
-            2. Analyze the environment and logically think if certain protection is needed. For example, eye wear may not be necessary in meal prep factories, etc.
-            3. Try to provide reasoning when possible. For example, no eye wear here is dangerous because concrete could splash into worker eye causing permenant damage, etc.
+            ## ANALYSIS REQUIREMENTS
+            1. **OSHA Violations**: Cite specific regulation codes. Unknown PPE IS a violation.
+            2. **Root Cause Analysis**: Training Gap, Process Flaw, Equipment Issue, or Negligence.
+            3. **Corrective Actions**: SMART actions for each violation.
+            4. **Operational Efficiency**: Identify 7 Wastes of Lean (Muda).
+            5. **Financial Impact**: Estimate realistic OSHA fine amounts.
 
-            // NOTE: THIS IS AN EXAMPLE OF THE *STRUCTURE* ONLY //
+            IMPORTANT: You MUST report violations. Every industrial video has issues. If you find zero violations, you are not looking hard enough. Check unknown PPE, housekeeping, ergonomics, and malpractices.
+
+            Return ONLY a valid JSON object (no markdown):
 
             {
             "compliance": {
@@ -236,25 +233,24 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
                 {
                     "id": 1,
                     "type": "PPE Violation",
-                    "severity": "high",
-                    "description": "Worker at the sewing station is not wearing protective gloves while the machine is in operation. This is bad because...",
-                    "timestamp": "00:05",
-                    "location": "Sewing Station 3",
-                    "regulation": "OSHA 1910.132",
-                    "rootCause": "Training Gap | Process Flaw | Equipment Malfunction | Negligence",
-                    "potentialFineUSD": 15625,
-                    "link": "https://www.osha.gov/laws-regs/regulations/1910.132"
+                    "severity": "medium",
+                    "description": "Worker's eye protection status cannot be confirmed — OSHA 29 CFR 1910.133 requires eye protection in industrial environments. Status: UNVERIFIED.",
+                    "timestamp": "00:00",
+                    "location": "Scaffolding Area",
+                    "regulation": "OSHA 1910.133",
+                    "rootCause": "Process Flaw",
+                    "potentialFineUSD": 7500
                 }
                 ],
                 "scoringMethodology": "Base score of 100, with deductions for violations based on severity (High: -15, Medium: -10, Low: -5).",
-                "score": 75
+                "score": 90
             },
             "riskAssessment": {
                 "overallSafetyRisk": "medium",
                 "overallOperationalRisk": "low",
                 "riskFactors": [
                 {
-                    "factor": "Lack of Consistent PPE Usage",
+                    "factor": "Unverified Eye Protection",
                     "level": "medium",
                     "impact": "Worker Safety"
                 }
@@ -263,8 +259,8 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
             "correctiveActions": [
                 {
                 "violationId": 1,
-                "action": "Conduct mandatory refresher training on PPE requirements for all sewing station operators and install a glove dispenser at Station 3.",
-                "assignee": "Shift Supervisor",
+                "action": "Conduct immediate site inspection to verify eye protection compliance for all workers. Install mandatory PPE checkpoint.",
+                "assignee": "Safety Manager",
                 "dueDate": "2025-10-18",
                 "status": "Pending"
                 }
@@ -272,28 +268,22 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
             "operationalEfficiency": {
                 "identifiedWastes": [
                 {
-                    "type": "Waiting (Muda)",
-                    "timestamp": "00:12",
-                    "description": "Worker at the packing station is idle for 15 seconds waiting for boxes to arrive on the conveyor belt, indicating a bottleneck upstream."
-                },
-                {
                     "type": "Unnecessary Motion (Muda)",
-                    "timestamp": "00:21",
-                    "description": "Worker at Assembly Line B has to walk 10 feet to retrieve a tool, which should be located at their station."
+                    "timestamp": "00:08",
+                    "description": "Workers positioned far from shared tools, requiring lateral movement."
                 }
                 ],
                 "recommendations": [
-                    "Adjust conveyor belt speed from the primary cutting area to better match the packing station's cycle time.",
-                    "Implement a 5S program at Assembly Line B to ensure all necessary tools are within arm's reach."
+                    "Redesign tool storage layout to minimize unnecessary movement."
                 ]
             },
             "summary": {
-                "duration": "00:30",
-                "workersPresent": 2,
-                "safetyIncidents": 0,
+                "duration": "00:14",
+                "workersPresent": 3,
+                "safetyIncidents": 1,
                 "keyFindings": [
-                    "While no injuries occurred, the observed PPE violation at Sewing Station 3 represents a significant and recurring risk because...",
-                    "Analysis of workflow indicates a minor bottleneck causing intermittent downtime at the final packing station."
+                    "Eye protection status UNKNOWN for all workers — reported as compliance gap under OSHA 1910.133. Immediate verification required.",
+                    "Operational inefficiency: tool layout causes unnecessary lateral movement."
                 ]
             }
         }
