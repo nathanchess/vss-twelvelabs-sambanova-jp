@@ -43,6 +43,14 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
     const [reportGenerated, setReportGenerated] = useState(false);
     const [correctiveActionStatuses, setCorrectiveActionStatuses] = useState({});
 
+    // Reset forensics state when navigating to a different video
+    useEffect(() => {
+        setForensicsData(null);
+        setIsLoading(false);
+        setReportGenerated(false);
+        setCorrectiveActionStatuses({});
+    }, [videoId]);
+
     const mockForensicsData = {
         compliance: {
             violations: [
@@ -229,6 +237,8 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
             5. Generate at least 2 risk factors.
             6. If you genuinely see zero non-PPE issues, report potential risks based on the industrial environment type (e.g., "No anti-fatigue mats observed at standing workstations").
 
+            ⚠️ IMPORTANT: The JSON structure below is a TEMPLATE showing the required keys and data types ONLY. Do NOT copy the placeholder text. Replace ALL angle-bracket placeholders with your ACTUAL observations from the video.
+
             Return ONLY a valid JSON object (no markdown):
 
             {
@@ -236,106 +246,57 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
                 "violations": [
                 {
                     "id": 1,
-                    "type": "PPE Violation",
-                    "severity": "medium",
-                    "description": "Worker's eye protection status cannot be confirmed — OSHA 29 CFR 1910.133 requires eye protection in industrial environments. Status: UNVERIFIED.",
-                    "timestamp": "00:00",
-                    "location": "Work Area A",
-                    "regulation": "OSHA 1910.133",
-                    "rootCause": "Process Flaw",
-                    "potentialFineUSD": 7500
-                },
-                {
-                    "id": 2,
-                    "type": "Housekeeping Violation",
-                    "severity": "medium",
-                    "description": "Loose cables and hoses crossing the walkway near the work area create a tripping hazard — OSHA 29 CFR 1910.22 requires clear, unobstructed walking surfaces.",
-                    "timestamp": "00:05",
-                    "location": "Main Walkway",
-                    "regulation": "OSHA 1910.22",
-                    "rootCause": "Process Flaw",
-                    "potentialFineUSD": 5000
-                },
-                {
-                    "id": 3,
-                    "type": "Ergonomic Risk",
-                    "severity": "low",
-                    "description": "Worker observed bending at the waist repeatedly to access materials at ground level without using proper lifting technique — risk of musculoskeletal injury per OSHA ergonomic guidelines.",
-                    "timestamp": "00:10",
-                    "location": "Material Staging Area",
-                    "regulation": "OSHA General Duty Clause 5(a)(1)",
-                    "rootCause": "Training Gap",
-                    "potentialFineUSD": 3000
+                    "type": "<VIOLATION_TYPE: PPE Violation | Housekeeping Violation | Ergonomic Risk | Machine Safety | Environmental Hazard | Electrical Hazard | Fire Safety | Behavioral Malpractice>",
+                    "severity": "<high | medium | low>",
+                    "description": "<DESCRIBE exactly what you see in the video, cite OSHA regulation, explain why it is a violation>",
+                    "timestamp": "<MM:SS from video>",
+                    "location": "<DESCRIBE the specific area visible in the video>",
+                    "regulation": "<OSHA regulation code>",
+                    "rootCause": "<Training Gap | Process Flaw | Equipment Issue | Negligence>",
+                    "potentialFineUSD": 0
                 }
                 ],
                 "scoringMethodology": "Base score of 100, with deductions for violations based on severity (High: -15, Medium: -10, Low: -5).",
-                "score": 75
+                "score": 0
             },
             "riskAssessment": {
-                "overallSafetyRisk": "medium",
-                "overallOperationalRisk": "medium",
+                "overallSafetyRisk": "<high | medium | low>",
+                "overallOperationalRisk": "<high | medium | low>",
                 "riskFactors": [
                 {
-                    "factor": "Unverified PPE Compliance",
-                    "level": "medium",
-                    "impact": "Worker Safety"
-                },
-                {
-                    "factor": "Tripping Hazards in Walkway",
-                    "level": "medium",
-                    "impact": "Worker Safety & Liability"
-                },
-                {
-                    "factor": "Ergonomic Risk from Improper Lifting",
-                    "level": "low",
-                    "impact": "Long-term Worker Health"
+                    "factor": "<DESCRIBE the risk factor you observed>",
+                    "level": "<high | medium | low>",
+                    "impact": "<DESCRIBE the impact>"
                 }
                 ]
             },
             "correctiveActions": [
                 {
                 "violationId": 1,
-                "action": "Conduct immediate PPE verification audit for all workers. Install PPE checkpoint at site entry.",
-                "assignee": "Safety Manager",
-                "dueDate": "2025-10-18",
-                "status": "Pending"
-                },
-                {
-                "violationId": 2,
-                "action": "Install cable management system and floor cord covers along main walkway. Conduct weekly housekeeping inspections.",
-                "assignee": "Facilities Manager",
-                "dueDate": "2025-10-20",
-                "status": "Pending"
-                },
-                {
-                "violationId": 3,
-                "action": "Provide ergonomic training on proper lifting techniques. Install elevated material racks to eliminate ground-level bending.",
-                "assignee": "Shift Supervisor",
-                "dueDate": "2025-10-25",
+                "action": "<SPECIFIC corrective action for this violation>",
+                "assignee": "<appropriate role>",
+                "dueDate": "<date>",
                 "status": "Pending"
                 }
             ],
             "operationalEfficiency": {
                 "identifiedWastes": [
                 {
-                    "type": "Unnecessary Motion (Muda)",
-                    "timestamp": "00:08",
-                    "description": "Workers positioned far from shared tools, requiring lateral movement."
+                    "type": "<Waste type> (Muda)",
+                    "timestamp": "<MM:SS>",
+                    "description": "<DESCRIBE the waste you observed in the video>"
                 }
                 ],
                 "recommendations": [
-                    "Redesign tool storage layout to minimize unnecessary movement.",
-                    "Implement 5S workspace organization program."
+                    "<SPECIFIC recommendation based on what you observed>"
                 ]
             },
             "summary": {
-                "duration": "00:14",
-                "workersPresent": 3,
-                "safetyIncidents": 3,
+                "duration": "<video duration MM:SS>",
+                "workersPresent": 0,
+                "safetyIncidents": 0,
                 "keyFindings": [
-                    "Eye protection status UNKNOWN for workers — reported as compliance gap under OSHA 1910.133.",
-                    "Tripping hazard from loose cables in walkway — OSHA 1910.22 violation.",
-                    "Ergonomic risk from repeated improper bending — potential musculoskeletal injury."
+                    "<One sentence per major finding, based on YOUR observations>"
                 ]
             }
         }
