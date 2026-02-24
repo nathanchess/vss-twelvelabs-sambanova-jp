@@ -167,52 +167,69 @@ export default function ClipDetailPage({ params }) {
         `;
 
         const prompt = `
-        Generate button metadata for the factory video attached for compliance issues, issues with personal protective equipment usage, and potential improvements for efficiency. 
-        
-        // CRUCIAL INSTRUCTIONS FOR VERIFICATION //
-        Before generating any JSON, you MUST perform this rigorous internal verification process for every potential finding:
-        1.  **Observe First:** Identify a specific area of interest (e.g., a worker's hands, head, or workspace).
-        2.  **Hypothesize:** Form a hypothesis (e.g., "The worker might be missing gloves.").
-        3.  **Challenge and Verify:** Aggressively challenge your hypothesis with this rule: Do not mistake "absence of clear evidence" for "evidence of absence."
-            -   For a **VIOLATION** claim (e.g., "missing gloves"), you MUST have clear, unambiguous visual evidence of **BARE SKIN** where PPE should be.
-            -   If the view is unclear, partially obscured, or the item could be small or skin-colored, you **MUST NOT** report a violation.
+        You are a senior EHS (Environment, Health & Safety) forensic auditor conducting a detailed compliance audit of this factory video.
+        Your job is to identify ALL potential issues — not just obvious, present-danger violations, but also:
 
+        ## STEP 1 — SYSTEMATIC VISUAL SCAN
+        Before generating findings, scan the video frame-by-frame and check EACH of these categories:
+
+        ### A. Personal Protective Equipment (PPE)
+        - Hard hats, gloves, safety glasses, high-vis vests, steel-toe boots, hearing protection, face shields
+        - Check EVERY visible worker individually. Note partial compliance (e.g., hard hat on but no gloves).
+
+        ### B. Housekeeping & Organization
+        - Cluttered walkways, unsecured tools/materials, tripping hazards, spills, loose cables/hoses
+        - Blocked emergency exits, fire extinguisher access, or electrical panels
+        - Debris, waste materials, or disorganized storage
+
+        ### C. Ergonomic & Body Mechanics
+        - Improper lifting posture, repetitive motions, awkward body positions
+        - Workers bending, reaching overhead, or twisting under load
+
+        ### D. Machine & Equipment Safety
+        - Missing machine guards, bypassed safety interlocks, lack of lockout/tagout indicators
+        - Workers operating near moving parts, pinch points, or crush zones without barriers
+
+        ### E. Signage & Markings
+        - Missing or faded floor markings, lack of warning signs, missing safety data sheets
+        - Insufficient lighting in work areas
+
+        ### F. Environmental & Process Hazards
+        - Fumes, dust, vapor without ventilation or respiratory protection
+        - Hot work (welding, cutting) near combustibles
+        - Noise exposure without hearing protection
+
+        ### G. Behavioral & Procedural
+        - Workers not following standard procedures (shortcuts, rushing)
+        - Lack of supervision in high-risk tasks
+        - Workers in unauthorized zones
+
+        ## STEP 2 — CLASSIFY SEVERITY
+        For each finding, assign a severity:
+        - **Critical**: Immediate danger to life or health (e.g., no fall protection at height)
+        - **Warning**: Regulatory violation that could result in OSHA fines (e.g., missing safety glasses)
+        - **Advisory**: Minor issue or bad practice that could escalate (e.g., cluttered workbench, poor posture)
+
+        Report ALL severities. Do not skip Advisory-level issues — these are still real findings that result in fines during audits.
+
+        ## STEP 3 — GENERATE FINDINGS
         ${visualFactsContext}
 
-        Each button should have the following data:
+        Each button should have:
         - title: A concise title summarizing the issue or improvement.
-        - description: A detailed description explaining the issue or improvement, its implications, and recommended actions.
-        - category: One of the following categories - compliance, improvement, personal protective equipment.
-        - x: X coordinate as a percentage (0-100) representing the horizontal position of the button on the video frame percentage values relative to a 16:9 aspect ratio video player that is 1400px wide. Should be extremely accurate.
-        - y: Y coordinate as a percentage (0-100) representing the vertical position of the button on the video frame percentage values relative to a 16:9 aspect ratio video player that is 1400px wide. Should be extremely accurate.
-        - start: Start time in seconds when the button should appear.
-        - end: End time in seconds when the button should disappear.
-        - link: (optional) If providing a link, it MUST be a general, high-level URL to a major safety organization's main page, such as "https://www.osha.gov" or "https://www.hse.gov.uk". Do not generate deep, specific, or unverified links.
+        - description: A detailed description explaining the issue, its implications, the relevant OSHA standard if applicable, and recommended corrective action.
+        - category: One of: compliance, improvement, personal protective equipment.
+        - x: X coordinate as a percentage (0-100) pointing to the exact location of the issue in the video frame.
+        - y: Y coordinate as a percentage (0-100) pointing to the exact location of the issue in the video frame.
+        - start: Start time in seconds when the issue is visible.
+        - end: End time in seconds when the issue stops being visible.
+        - link: (optional) A general URL like "https://www.osha.gov" — do not generate deep or unverified links.
         
-        If multiple issues or improvements are identified, create separate buttons for each. Ensure that the coordinates accurately reflect the location of the issue or improvement in the video frame.
-        Ensure x, y percentages are highly accurate. For example, if the issue is with gloves, the percentages should point to the hands of the worker.
-        Take into account the factory setting in video content and include relevant safety and compliance considerations into your description.
-
-        Base all findings STRICTLY on the visual evidence present in the video. Do NOT infer or assume any compliance issue that is not clearly visible. If a worker is wearing the correct PPE, you can create a "Safety Compliance" button to highlight it.
-
-        Generate a button for each distinct observation. 
-
-        // FINAL OUTPUT RULES //
-        Base all findings STRICTLY on the verification process above. Coordinates must point to the exact location of the evidence.
+        IMPORTANT: Generate a finding for EVERY issue you observe, even minor ones. It is better to flag a potential Advisory-level concern than to miss a real violation. However, do NOT fabricate issues that are not supported by visual evidence. If a worker IS wearing proper PPE, note it as a positive "Safety Compliance" finding.
         
-
         Respond with a valid JSON array only, no markdown formatting.
 
-        [{
-            "title": "Missing Hard Hat",
-            "description": "Worker on the left side of the frame is not wearing a hard hat while operating machinery, which is a safety violation. Recommend immediate compliance with PPE regulations to prevent head injuries.",
-            "category": "personal protective equipment",
-            "x": 32,
-            "y": 78,
-            "start": 15,
-            "end": 45,
-            "link": "https://www.osha.gov/personal-protective-equipment"
-        }]
+        [{"title": "Missing Hard Hat", "description": "Worker on the left side is not wearing a hard hat while near overhead hazards — OSHA 29 CFR 1926.100 violation. Recommend immediate compliance.", "category": "personal protective equipment", "x": 32, "y": 78, "start": 15, "end": 45, "link": "https://www.osha.gov"}]
 
         `;
 

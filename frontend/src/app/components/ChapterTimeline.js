@@ -28,14 +28,15 @@ export default function ChapterTimeline({ videoId, onSeekTo }) {
 
                 const prompt = `
                 You are an expert EHS (Environment, Health, and Safety) and Operations analyst.
+                Generate exactly 3 chapters maximum. Merge minor events into the nearest major event.
 
                 ## STEP 1 — VISUAL SCAN (chain of thought)
                 Before generating any chapters, mentally scan the entire video from start to finish.
                 Identify every distinct visual transition, scene change, or shift in worker activity.
                 Note the approximate timestamp where each transition occurs.
 
-                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS
-                Using the transitions you identified, divide the ENTIRE video duration into sequential, non-overlapping chapters.
+                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS (max 3)
+                Using the transitions you identified, divide the ENTIRE video duration into exactly 3 sequential, non-overlapping chapters.
                 CRITICAL RULES for timestamps:
                 - Chapter 1 must start at 0 seconds.
                 - Each chapter's startSec MUST equal the previous chapter's endSec (no gaps, no overlaps).
@@ -164,14 +165,15 @@ export default function ChapterTimeline({ videoId, onSeekTo }) {
         try {
             const prompt = `
                 You are an expert EHS (Environment, Health, and Safety) and Operations analyst.
+                Generate exactly 3 chapters maximum. Merge minor events into the nearest major event.
 
                 ## STEP 1 — VISUAL SCAN (chain of thought)
                 Before generating any chapters, mentally scan the entire video from start to finish.
                 Identify every distinct visual transition, scene change, or shift in worker activity.
                 Note the approximate timestamp where each transition occurs.
 
-                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS
-                Using the transitions you identified, divide the ENTIRE video duration into sequential, non-overlapping chapters.
+                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS (max 3)
+                Using the transitions you identified, divide the ENTIRE video duration into exactly 3 sequential, non-overlapping chapters.
                 CRITICAL RULES for timestamps:
                 - Chapter 1 must start at 0 seconds.
                 - Each chapter's startSec MUST equal the previous chapter's endSec (no gaps, no overlaps).
