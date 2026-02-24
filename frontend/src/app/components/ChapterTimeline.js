@@ -245,30 +245,30 @@ export default function ChapterTimeline({ videoId, onSeekTo }) {
 
         setIsAutoRetrying(true);
         setRetryCount(0);
+        let attempts = 0;
 
         const autoRetry = async () => {
-            if (retryCount >= 10) { // Max 10 retries
+            attempts++;
+            if (attempts > 10) { // Max 10 retries
                 setIsAutoRetrying(false);
                 return;
             }
 
+            setRetryCount(attempts);
+
             try {
                 await retryTimeline();
 
-                // If successful, stop auto-retry
-                if (!error) {
-                    setIsAutoRetrying(false);
-                    return;
-                }
-            } catch (error) {
-                console.error("Error during auto-retry", error);
+                // If retryTimeline didn't throw, assume success.
+                // Stop auto-retry and let component re-render.
+                setIsAutoRetrying(false);
+                return;
+            } catch (err) {
+                console.error("Error during auto-retry", err);
             }
 
             // Wait 5 seconds before next retry
-            setTimeout(() => {
-                setRetryCount(prev => prev + 1);
-                autoRetry();
-            }, 5000);
+            setTimeout(autoRetry, 5000);
         };
 
         autoRetry();

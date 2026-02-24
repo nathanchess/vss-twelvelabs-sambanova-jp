@@ -135,21 +135,28 @@ export default function ClipDetailPage({ params }) {
             }
                     `;
 
-        const rationalResponse = await fetch('/api/analysis', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                videoId: clipData['pegasusId'],
-                userQuery: rationalePrompt,
-                language: 'en'
-            })
-        });
+        let rationalWorkerData = {};
+        try {
+            const rationalResponse = await fetch('/api/analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    videoId: clipData['pegasusId'],
+                    userQuery: rationalePrompt,
+                    language: 'en'
+                })
+            });
 
-        if (!rationalResponse.ok) throw new Error("Rationale API request failed.")
+            if (!rationalResponse.ok) throw new Error("Rationale API request failed.")
 
-        const rationalData = await rationalResponse.json()
-        console.log("Rationale data", rationalData)
-        const rationalWorkerData = JSON.parse(rationalData['data'] || '{}')
+            const rationalData = await rationalResponse.json()
+            console.log("Rationale data", rationalData)
+            rationalWorkerData = JSON.parse(rationalData['data'] || '{}')
+        } catch (rationaleError) {
+            console.warn("Rationale pre-scan failed, continuing without it:", rationaleError);
+            // Continue with empty rationale data - the main analysis can still work
+        }
+
 
         const visualFactsContext = `
             // VISUAL FACTS (RATIONALE) //
@@ -368,31 +375,33 @@ export default function ClipDetailPage({ params }) {
 
         setIsAutoRetrying(true);
         setRetryCount(0);
+        let attempts = 0;
 
         const autoRetry = async () => {
-            if (retryCount >= 10) { // Max 10 retries
+            attempts++;
+            if (attempts > 10) { // Max 10 retries
                 setIsAutoRetrying(false);
                 return;
             }
+
+            setRetryCount(attempts);
 
             try {
                 await generateButtonMetadata();
                 await generateCacheData();
 
-                // If successful, stop auto-retry
-                if (!error) {
-                    setIsAutoRetrying(false);
-                    return;
-                }
-            } catch (error) {
-                console.error("Error during auto-retry", error);
+                // If no error was set during the calls above, we succeeded
+                // We can't read `error` state here (stale closure), so we stop
+                // and let the component re-render. If error persists, the
+                // useEffect on `error` will restart auto-retry.
+                setIsAutoRetrying(false);
+                return;
+            } catch (err) {
+                console.error("Error during auto-retry", err);
             }
 
             // Wait 5 seconds before next retry
-            setTimeout(() => {
-                setRetryCount(prev => prev + 1);
-                autoRetry();
-            }, 5000);
+            setTimeout(autoRetry, 5000);
         };
 
         autoRetry();

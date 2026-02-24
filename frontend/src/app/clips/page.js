@@ -34,7 +34,7 @@ export default function Clips() {
     setFilteredClipData(filteredClips);
   };
 
-  const sampleIds = [('13380578_3840_2160_25fps.mp4', '2ec57a48-d330-4404-a26a-0587348fa865')]
+  const sampleIds = [['13380578_3840_2160_25fps.mp4', '2ec57a48-d330-4404-a26a-0587348fa865']]
   const presetFactoryVideos = {
     "TextileFactory": ["68f509361f2f3a5c7fba4c51", "68f509d0f4b07b407a25a81a"],
     "ConstructionSite": ["68f508e513449bce9693d62f", "68f50811a66549584678d792"],
