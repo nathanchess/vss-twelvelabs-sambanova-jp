@@ -230,12 +230,10 @@ export default function ClipBento({ clipData, buttonMetadata, videoId }) {
             - **low**: Bad practice that could escalate (poor posture, clutter, minor housekeeping) — $1,000-$5,000
 
             ## CRITICAL INSTRUCTIONS
-            1. You MUST generate AT LEAST 3 violations. Every industrial environment has issues.
-            2. Violations must be DIVERSE — do NOT only report PPE issues. Include at least one non-PPE violation (housekeeping, ergonomics, environmental, electrical, etc.)
-            3. For each violation, cite the specific OSHA regulation code.
-            4. Generate a corrective action for EACH violation.
-            5. Generate at least 2 risk factors.
-            6. If you genuinely see zero non-PPE issues, report potential risks based on the industrial environment type (e.g., "No anti-fatigue mats observed at standing workstations").
+            1. Violations must be DIVERSE — do NOT only report PPE issues. Include at least one non-PPE violation (housekeeping, ergonomics, environmental, electrical, etc.)
+            2. For each violation, cite the specific OSHA regulation code.
+            3. Generate a corrective action for EACH violation.
+            4. If you genuinely see zero non-PPE issues, report potential risks based on the industrial environment type (e.g., "No anti-fatigue mats observed at standing workstations").
 
             ⚠️ IMPORTANT: The JSON structure below is a TEMPLATE showing the required keys and data types ONLY. Do NOT copy the placeholder text. Replace ALL angle-bracket placeholders with your ACTUAL observations from the video.
 
