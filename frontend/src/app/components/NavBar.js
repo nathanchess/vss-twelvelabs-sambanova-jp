@@ -25,8 +25,8 @@ export default function NavBar() {
             {/* NVIDIA Logo */}
             <div className="relative h-30 w-30 flex-shrink-0">
               <Image
-                src="/sambanova_logo.png"
-                alt="Sambanova Logo"
+                src="/nvidia.jpg"
+                alt="NVIDIA Logo"
                 fill
                 className="object-contain filter brightness-110"
               />
@@ -45,7 +45,7 @@ export default function NavBar() {
             {/* Title */}
             <div className="hidden lg:block">
               <h1 className="text-xl font-semibold text-gray-800 whitespace-nowrap tracking-tight font-inter leading-tight">
-                Sambanova Twelve Labs Integration
+                NVIDIA Twelve Labs Integration
                 <span className="block text-base font-medium text-gray-600 mt-1">{t('manufacturingAutomation', language)}</span>
               </h1>
             </div>
@@ -79,8 +79,8 @@ export default function NavBar() {
               <span className="hidden md:block font-medium whitespace-nowrap">{t('clips', language)}</span>
             </Link>
 
-            {/* Language Toggle */}
-            <LanguageToggle />
+            {/* Language Toggle - Hidden for n-version */}
+            {/* <LanguageToggle /> */}
 
             {/* Notifications Button */}
             <div className="relative">
