@@ -27,16 +27,30 @@ export default function ChapterTimeline({ videoId, onSeekTo }) {
                 setError(null);
 
                 const prompt = `
-                You are an expert EHS (Environment, Health, and Safety) and Operations analyst. Your task is to analyze this video and generate a concise, event-driven chapter timeline.
+                You are an expert EHS (Environment, Health, and Safety) and Operations analyst.
 
-                For each chapter, identify a single, distinct event. Focus on the following categories in order of priority:
-                1.  **Safety Events**: Any potential OSHA violation, unsafe act (e.g., improper lifting), or unsafe condition (e.g., a spill).
-                2.  **Operational Inefficiencies**: Clear instances of Lean Manufacturing wastes like waiting, unnecessary motion, or bottlenecks.
-                3.  **Key Process Milestones**: The start or end of a specific task (e.g., "Begin welding," "Forklift departs," "Concrete pour completed").
+                ## STEP 1 — VISUAL SCAN (chain of thought)
+                Before generating any chapters, mentally scan the entire video from start to finish.
+                Identify every distinct visual transition, scene change, or shift in worker activity.
+                Note the approximate timestamp where each transition occurs.
+
+                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS
+                Using the transitions you identified, divide the ENTIRE video duration into sequential, non-overlapping chapters.
+                CRITICAL RULES for timestamps:
+                - Chapter 1 must start at 0 seconds.
+                - Each chapter's startSec MUST equal the previous chapter's endSec (no gaps, no overlaps).
+                - The last chapter's endSec must equal the total video duration.
+                - Every chapter MUST cover a different time range. Two chapters must NEVER share the same startSec and endSec.
+
+                ## STEP 3 — LABEL EACH CHAPTER
+                For each time range, identify the single most important event. Prioritize:
+                1. **Safety Events**: OSHA violations, unsafe acts (improper lifting, missing PPE), unsafe conditions (spills, no barriers).
+                2. **Operational Inefficiencies**: Lean wastes — waiting, unnecessary motion, bottlenecks.
+                3. **Key Process Milestones**: Start/end of tasks (e.g., "Crane Lift Initiated", "Welding Complete").
 
                 For each chapter:
-                - The **Chapter Title** must be a short, active phrase describing the event (e.g., "Improper PPE Usage," "Worker Waiting for Materials," "Crane Lift Initiated").
-                - The **Chapter Summary** must be a single, objective sentence describing precisely what is happening in that clip. Include if there is any systematic issue or risk within that clip.
+                - **chapterTitle**: Short, active phrase (e.g., "Improper PPE Usage", "Worker Idle at Station").
+                - **chapterSummary**: One objective sentence describing what is happening and any risk or inefficiency.
 
                 `;
 
@@ -149,18 +163,32 @@ export default function ChapterTimeline({ videoId, onSeekTo }) {
 
         try {
             const prompt = `
-            You are an expert EHS (Environment, Health, and Safety) and Operations analyst. Your task is to analyze this video and generate a concise, event-driven chapter timeline.
+                You are an expert EHS (Environment, Health, and Safety) and Operations analyst.
 
-            For each chapter, identify a single, distinct event. Focus on the following categories in order of priority:
-            1.  **Safety Events**: Any potential OSHA violation, unsafe act (e.g., improper lifting), or unsafe condition (e.g., a spill).
-            2.  **Operational Inefficiencies**: Clear instances of Lean Manufacturing wastes like waiting, unnecessary motion, or bottlenecks.
-            3.  **Key Process Milestones**: The start or end of a specific task (e.g., "Begin welding," "Forklift departs," "Concrete pour completed").
+                ## STEP 1 — VISUAL SCAN (chain of thought)
+                Before generating any chapters, mentally scan the entire video from start to finish.
+                Identify every distinct visual transition, scene change, or shift in worker activity.
+                Note the approximate timestamp where each transition occurs.
 
-            For each chapter:
-            - The **Chapter Title** must be a short, active phrase describing the event (e.g., "Improper PPE Usage," "Worker Waiting for Materials," "Crane Lift Initiated").
-            - The **Chapter Summary** must be a single, objective sentence describing precisely what is happening in that clip. Include if there is any systematic issue or risk within that clip.
+                ## STEP 2 — DIVIDE INTO NON-OVERLAPPING CHAPTERS
+                Using the transitions you identified, divide the ENTIRE video duration into sequential, non-overlapping chapters.
+                CRITICAL RULES for timestamps:
+                - Chapter 1 must start at 0 seconds.
+                - Each chapter's startSec MUST equal the previous chapter's endSec (no gaps, no overlaps).
+                - The last chapter's endSec must equal the total video duration.
+                - Every chapter MUST cover a different time range. Two chapters must NEVER share the same startSec and endSec.
 
-            `;
+                ## STEP 3 — LABEL EACH CHAPTER
+                For each time range, identify the single most important event. Prioritize:
+                1. **Safety Events**: OSHA violations, unsafe acts (improper lifting, missing PPE), unsafe conditions (spills, no barriers).
+                2. **Operational Inefficiencies**: Lean wastes — waiting, unnecessary motion, bottlenecks.
+                3. **Key Process Milestones**: Start/end of tasks (e.g., "Crane Lift Initiated", "Welding Complete").
+
+                For each chapter:
+                - **chapterTitle**: Short, active phrase (e.g., "Improper PPE Usage", "Worker Idle at Station").
+                - **chapterSummary**: One objective sentence describing what is happening and any risk or inefficiency.
+
+                `;
 
             const response = await fetch('/api/timeline', {
                 method: 'POST',

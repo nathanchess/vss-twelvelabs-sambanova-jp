@@ -20,11 +20,11 @@ const chapterSchema = {
                     },
                     startSec: {
                         type: "number",
-                        description: "Start time of the chapter in seconds"
+                        description: "Start time of the chapter in seconds. Must equal the previous chapter's endSec. Chapter 1 must start at 0."
                     },
                     endSec: {
                         type: "number",
-                        description: "End time of the chapter in seconds"
+                        description: "End time of the chapter in seconds. Must be greater than startSec. The next chapter's startSec must equal this value."
                     },
                     chapterTitle: {
                         type: "string",
