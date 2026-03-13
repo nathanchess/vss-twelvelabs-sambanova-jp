@@ -142,7 +142,9 @@ class RemuxServer:
                 'hlsSegmentMaxSize': '50M',      # Max segment size
                 'hlsAllowOrigin': '*',           # Allow CORS
                 'hlsAlwaysRemux': True,          # Keep HLS muxer alive even with no clients (prevents gap.mp4)
-                'paths': {},
+                'paths': {
+                    'all_others': {},            # Wildcard: accept ANY publisher on any path without config reload
+                },
             }
 
             with open(self.config_path, 'w') as f:
@@ -202,36 +204,10 @@ class RemuxServer:
 
     async def add_stream(self, public_rtsp_url: str, stream_name: str, reload_config: bool = True):
 
-        """ Given public video URL, add it to the MediaMTX config """
-
-        print(f"[SERVER] Adding stream {stream_name} with public URL {public_rtsp_url}")
-
-        async with config_lock:
-
-            with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-                if 'paths' not in config:
-                    config['paths'] = {}
-            
-
-            config['paths'][stream_name] = {
-                'source': public_rtsp_url,
-                'rtspTransport': 'tcp',
-            }
-
-            with open(self.config_path, 'w') as f:
-                yaml.dump(config, f)
-
-            print(f"[SERVER] Added stream {stream_name} with public URL {public_rtsp_url}")
-
-        if reload_config and sys.platform != 'win32' and self.mediamtx_process:
-            try:
-                self.mediamtx_process.send_signal(signal.SIGUSR1)
-            except Exception as e:
-                print(f"[SERVER] Error sending signal to mediamtx: {e}")
+        """ Register a stream path. No config changes needed thanks to wildcard 'all_others' path. """
 
         hls_url = f"{self.hls_public_url}/{stream_name}/index.m3u8"
-        print(f"[SERVER] HLS URL for stream {stream_name}: {hls_url}")
+        print(f"[SERVER] Registered stream {stream_name} -> {hls_url}")
         return hls_url
 
 class RTSPStreamManager:
@@ -490,11 +466,9 @@ async def load_stream(request: fastapi.Request):
             if not stream_name in stream_mappings:
                 stream_mappings[stream_name] = []
 
-            # Phase 1: Add ALL paths to MediaMTX config (no reload until the last one)
-            print(f"[LOAD] [{stream_name}] Phase 1: Writing all paths to MediaMTX config...")
-            stream_managers = []
+            # Register all streams and start FFmpeg processes
             for i, (video_file_path, video_name) in enumerate(file_urls):
-                print(f"[LOAD] [{stream_name}] Config {i+1}/{total}: {video_name}")
+                print(f"[LOAD] [{stream_name}] Stream {i+1}/{total}: {video_name}")
 
                 # Stop existing stream if it exists to prevent leak
                 if video_name in active_stream_managers:
@@ -503,18 +477,8 @@ async def load_stream(request: fastapi.Request):
 
                 local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
                 active_stream_managers[video_name] = local_rtsp
-                stream_managers.append((local_rtsp, video_name))
 
-                # Only reload config on the LAST stream to avoid disrupting earlier ones
-                is_last = (i == len(file_urls) - 1)
-                await central_server.add_stream(local_rtsp.rtsp_url, video_name, reload_config=is_last)
-                if is_last:
-                    print(f"[LOAD] [{stream_name}] Config reload sent (SIGUSR1)")
-
-            # Phase 2: Start ALL FFmpeg processes now that config is stable
-            print(f"[LOAD] [{stream_name}] Phase 2: Starting {total} FFmpeg processes...")
-            for j, (local_rtsp, video_name) in enumerate(stream_managers):
-                print(f"[LOAD] [{stream_name}] FFmpeg {j+1}/{total}: {video_name}")
+                await central_server.add_stream(local_rtsp.rtsp_url, video_name)
                 await local_rtsp.start()
                 stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
             
