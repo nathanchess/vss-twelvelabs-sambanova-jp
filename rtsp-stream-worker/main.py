@@ -255,46 +255,20 @@ class RTSPStreamManager:
             ffmpeg_command = [
                 'ffmpeg',
 
-                # --- Global Options (Section 5.2 of ffmpeg docs) ---
+                # --- Global Options ---
                 '-hide_banner', '-loglevel', 'error',
 
-                # --- Input Options (Section 5.4 of ffmpeg docs) ---
+                # --- Input Options ---
                 '-re',                                   # Read input at native frame rate
                 '-stream_loop', '-1',                    # Loop input infinitely
                 '-i', self.video_file_path,
 
-                # --- Video Output Options ---
-                '-vf', 'scale=1280:720',                 # Scale filter (Section 3.3.1)
-                '-r', '30',                              # Output frame rate (Section 5.5)
-                '-vsync', 'cfr',                         # Constant frame rate (FFmpeg 4.x compatible)
-                '-c:v', 'libx264',                       # Video codec (Section 5.4)
+                # --- Codec: copy (remux only, no re-encoding) ---
+                '-c', 'copy',                            # Copy all streams without re-encoding
 
-                # --- libx264 Options (Section 9.19.2 of ffmpeg-codecs) ---
-                '-preset', 'ultrafast',                  # Encoding preset (9.19.2)
-                '-tune', 'zerolatency',                  # Tuning for low latency (9.19.2)
-                '-profile:v', 'baseline',                # Profile restrictions (9.19.2)
-                '-level', '3.1',                         # Level (9.19.2)
-                '-g', '30',                              # GOP size (9.19.2: g/keyint)
-                '-keyint_min', '30',                     # Min GOP size (9.19.2)
-                '-bf', '0',                              # No B-frames for low latency (9.19.2)
-
-                # --- x264-params for x264-specific options (9.19.2) ---
-                '-x264-params', 'scenecut=0',            # Disable scene change detection
-
-                # --- Codec Options (Section 2 of ffmpeg-codecs) ---
-                '-b:v', '1000k',                         # Video bitrate (Section 2: b)
-                '-maxrate', '1200k',                     # Max bitrate (Section 2: maxrate)
-                '-bufsize', '2000k',                     # Buffer size (Section 2: bufsize)
-                '-pix_fmt', 'yuv420p',                   # Pixel format (Section 5.6)
-
-                # --- Audio Output Options (Section 5.7/8.1 of ffmpeg-codecs) ---
-                '-c:a', 'aac',                           # AAC encoder (Section 8.1)
-                '-b:a', '96k',                           # Audio bitrate (Section 8.1.1)
-                '-ar', '44100',                          # Sample rate (Section 5.7)
-                '-ac', '2',                              # Channels (Section 5.7)
-
-                # --- Output (Section 5.4) ---
+                # --- Output ---
                 '-f', 'rtsp',
+                '-rtsp_transport', 'tcp',                # Use TCP for reliable delivery
                 mediamtx_url
             ]
 
