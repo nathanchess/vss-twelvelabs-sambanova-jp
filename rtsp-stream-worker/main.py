@@ -263,12 +263,26 @@ class RTSPStreamManager:
                 '-stream_loop', '-1',                    # Loop input infinitely
                 '-i', self.video_file_path,
 
-                # --- Codec: copy (remux only, no re-encoding) ---
-                '-c', 'copy',                            # Copy all streams without re-encoding
+                # --- Lightweight Video Transcode (360p, low bitrate) ---
+                '-vf', 'scale=640:360',                  # Small resolution = less CPU
+                '-c:v', 'libx264',
+                '-preset', 'ultrafast',                  # Fastest encoding
+                '-tune', 'zerolatency',                  # Low latency
+                '-b:v', '500k',                          # Low bitrate = less bandwidth for MediaMTX
+                '-maxrate', '600k',
+                '-bufsize', '1000k',
+                '-g', '30',                              # GOP = 1 second at 30fps
+                '-bf', '0',                              # No B-frames
+                '-r', '30',                              # 30fps output
+
+                # --- Audio: copy (no re-encode needed) ---
+                '-c:a', 'aac',
+                '-b:a', '64k',                           # Low audio bitrate
+                '-ac', '1',                              # Mono audio
 
                 # --- Output ---
                 '-f', 'rtsp',
-                '-rtsp_transport', 'tcp',                # Use TCP for reliable delivery
+                '-rtsp_transport', 'tcp',
                 mediamtx_url
             ]
 
