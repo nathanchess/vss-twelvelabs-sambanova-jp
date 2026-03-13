@@ -476,7 +476,10 @@ async def load_stream(request: fastapi.Request):
         if not stream_name in stream_mappings:
             stream_mappings[stream_name] = []
 
-            # New: Stop existing stream if it exists to prevent leak
+        for video_file_path, video_name in file_urls:
+            print(f"[SERVER] Adding stream {stream_name} with video file path {video_name}")
+
+            # Stop existing stream if it exists to prevent leak
             if video_name in active_stream_managers:
                 print(f"[SERVER] Stopping existing stream {video_name}")
                 await active_stream_managers[video_name].cleanup()
