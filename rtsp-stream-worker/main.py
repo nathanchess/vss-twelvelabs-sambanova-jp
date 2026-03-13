@@ -28,6 +28,7 @@ config_lock = asyncio.Lock()
 central_server = None
 directory_path = os.path.dirname(__file__)
 stream_mappings = {}
+active_stream_managers = {} # New: Track RTSPStreamManager instances
 processing_status = {}  
 preset_video_files = {
     "TextileFactory": [
@@ -475,9 +476,13 @@ async def load_stream(request: fastapi.Request):
         if not stream_name in stream_mappings:
             stream_mappings[stream_name] = []
 
-        for video_file_path, video_name in file_urls:
-            print(f"[SERVER] Adding stream {stream_name} with video file path {video_name}")
+            # New: Stop existing stream if it exists to prevent leak
+            if video_name in active_stream_managers:
+                print(f"[SERVER] Stopping existing stream {video_name}")
+                await active_stream_managers[video_name].cleanup()
+
             local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
+            active_stream_managers[video_name] = local_rtsp
 
             await central_server.add_stream(local_rtsp.rtsp_url, video_name)
             await local_rtsp.start()
@@ -634,11 +639,17 @@ async def process_video_background(stream_name: str, s3_video_key: str):
         processing_status[stream_name]["completed_at"] = asyncio.get_event_loop().time()
 
         # Clean up temporary files
-        os.remove(video_file_path)
-        os.remove(processed_video_file_path)
-        for chunk_file in os.listdir(chunk_output_folder):
-            os.remove(os.path.join(chunk_output_folder, chunk_file))
-        os.rmdir(chunk_output_folder)
+        if os.path.exists(video_file_path):
+            os.remove(video_file_path)
+            
+        # The CV pipeline is commented out above, so processed_video_file_path may not exist
+        if 'processed_video_file_path' in locals() and os.path.exists(processed_video_file_path):
+            os.remove(processed_video_file_path)
+            
+        if os.path.exists(chunk_output_folder):
+            for chunk_file in os.listdir(chunk_output_folder):
+                os.remove(os.path.join(chunk_output_folder, chunk_file))
+            os.rmdir(chunk_output_folder)
         
         print(f"[BACKGROUND] Video processing completed successfully for {stream_name}")
         
