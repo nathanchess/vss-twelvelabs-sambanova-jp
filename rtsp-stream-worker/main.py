@@ -136,12 +136,11 @@ class RemuxServer:
         async with config_lock:
 
             central_config = {
-                'hlsSegmentDuration': '2s',      # Segment duration (matches FFmpeg GOP of 30 frames @ 30fps = 1s, so 2 GOPs per segment)
+                'hlsSegmentDuration': '2s',      # Segment duration
                 'hlsPartDuration': '200ms',      # LL-HLS part duration for faster initial load
-                'hlsSegmentCount': 7,            # Keep more segments in playlist for buffer stability
-                'hlsSegmentMaxSize': '50M',      # Max segment size
+                'hlsSegmentCount': 3,            # Fewer segments = less memory per muxer
                 'hlsAllowOrigin': '*',           # Allow CORS
-                'hlsAlwaysRemux': True,          # Keep HLS muxer alive even with no clients (prevents gap.mp4)
+                'hlsAlwaysRemux': False,         # Only create HLS muxers when clients watch (saves GB of RAM)
                 'paths': {
                     'all_others': {},            # Wildcard: accept ANY publisher on any path without config reload
                 },
@@ -263,22 +262,8 @@ class RTSPStreamManager:
                 '-stream_loop', '-1',                    # Loop input infinitely
                 '-i', self.video_file_path,
 
-                # --- Lightweight Video Transcode (360p, low bitrate) ---
-                '-vf', 'scale=640:360',                  # Small resolution = less CPU
-                '-c:v', 'libx264',
-                '-preset', 'ultrafast',                  # Fastest encoding
-                '-tune', 'zerolatency',                  # Low latency
-                '-b:v', '500k',                          # Low bitrate = less bandwidth for MediaMTX
-                '-maxrate', '600k',
-                '-bufsize', '1000k',
-                '-g', '30',                              # GOP = 1 second at 30fps
-                '-bf', '0',                              # No B-frames
-                '-r', '30',                              # 30fps output
-
-                # --- Audio: copy (no re-encode needed) ---
-                '-c:a', 'aac',
-                '-b:a', '64k',                           # Low audio bitrate
-                '-ac', '1',                              # Mono audio
+                # --- Codec: copy (remux only, no re-encoding = ~1% CPU per stream) ---
+                '-c', 'copy',
 
                 # --- Output ---
                 '-f', 'rtsp',
