@@ -6,6 +6,7 @@ import sys
 import fastapi
 import uvicorn
 import uuid
+import time
 import secrets
 import requests
 import cv2
@@ -199,7 +200,7 @@ class RemuxServer:
         print(f"\n[SERVER] Received signal {signum}, shutting down...")
         asyncio.create_task(self.cleanup())
 
-    async def add_stream(self, public_rtsp_url: str, stream_name: str):
+    async def add_stream(self, public_rtsp_url: str, stream_name: str, reload_config: bool = True):
 
         """ Given public video URL, add it to the MediaMTX config """
 
@@ -223,7 +224,7 @@ class RemuxServer:
 
             print(f"[SERVER] Added stream {stream_name} with public URL {public_rtsp_url}")
 
-        if sys.platform != 'win32' and self.mediamtx_process:
+        if reload_config and sys.platform != 'win32' and self.mediamtx_process:
             try:
                 self.mediamtx_process.send_signal(signal.SIGUSR1)
             except Exception as e:
@@ -272,6 +273,8 @@ class RTSPStreamManager:
         try:
 
             mediamtx_url = f'rtsp://127.0.0.1:8554/{self.serial_number}'
+            print(f"[FFMPEG] [{self.serial_number}] Starting FFmpeg -> {mediamtx_url}")
+            print(f"[FFMPEG] [{self.serial_number}] Video file: {self.video_file_path} (exists: {os.path.exists(self.video_file_path)})")
 
             ffmpeg_command = [
                 'ffmpeg',
@@ -326,23 +329,24 @@ class RTSPStreamManager:
                 limit=1024 * 1024  # 1 MB buffer limit
             )
 
-            asyncio.create_task(self._log_stream(self.ffmpeg_process.stdout, '[FFMPEG]'))
-            asyncio.create_task(self._log_stream(self.ffmpeg_process.stderr, '[FFMPEG]'))
+            print(f"[FFMPEG] [{self.serial_number}] Process spawned with PID: {self.ffmpeg_process.pid}")
+
+            asyncio.create_task(self._log_stream(self.ffmpeg_process.stdout, f'[FFMPEG:{self.serial_number}]'))
+            asyncio.create_task(self._log_stream(self.ffmpeg_process.stderr, f'[FFMPEG:{self.serial_number}:ERR]'))
 
             await asyncio.sleep(2)
 
             if self.ffmpeg_process.returncode is not None:
-                print(f"FFmpeg process exited prematurely with code: {self.ffmpeg_process.returncode}")
-                print("Check the [FFMPEG_ERROR] logs above for the reason.")
+                print(f"[FFMPEG] [{self.serial_number}] ❌ FAILED - exited with code: {self.ffmpeg_process.returncode}")
                 return
 
             self.rtsp_url = mediamtx_url
 
-            print(f"[FFMPEG] Started RTSP stream with URL: {mediamtx_url}")
+            print(f"[FFMPEG] [{self.serial_number}] ✅ Running - PID {self.ffmpeg_process.pid}")
         
         except Exception as e:
         
-            print(f"[FFMPEG] Error: {e}")
+            print(f"[FFMPEG] [{self.serial_number}] ❌ Exception: {e}")
 
     async def cleanup(self):
 
@@ -473,38 +477,57 @@ async def load_stream(request: fastapi.Request):
     async with stream_load_lock:
         # Re-check after acquiring lock (another request may have loaded this stream)
         if stream_name in stream_mappings:
+            print(f"[LOAD] [{stream_name}] Already loaded (cache hit after lock)")
             return JSONResponse(status_code=200, content=stream_mappings[stream_name])
 
         if stream_name in preset_video_files:
 
             file_urls = preset_video_files[stream_name]
+            total = len(file_urls)
+            t_start = time.time()
+            print(f"[LOAD] ========== Loading '{stream_name}' ({total} streams) ==========")
 
             if not stream_name in stream_mappings:
                 stream_mappings[stream_name] = []
 
-            for video_file_path, video_name in file_urls:
-                print(f"[SERVER] Adding stream {stream_name} with video file path {video_name}")
+            # Phase 1: Add ALL paths to MediaMTX config (no reload until the last one)
+            print(f"[LOAD] [{stream_name}] Phase 1: Writing all paths to MediaMTX config...")
+            stream_managers = []
+            for i, (video_file_path, video_name) in enumerate(file_urls):
+                print(f"[LOAD] [{stream_name}] Config {i+1}/{total}: {video_name}")
 
                 # Stop existing stream if it exists to prevent leak
                 if video_name in active_stream_managers:
-                    print(f"[SERVER] Stopping existing stream {video_name}")
+                    print(f"[LOAD] [{stream_name}] Cleaning up old stream: {video_name}")
                     await active_stream_managers[video_name].cleanup()
 
                 local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
                 active_stream_managers[video_name] = local_rtsp
+                stream_managers.append((local_rtsp, video_name))
 
-                await central_server.add_stream(local_rtsp.rtsp_url, video_name)
+                # Only reload config on the LAST stream to avoid disrupting earlier ones
+                is_last = (i == len(file_urls) - 1)
+                await central_server.add_stream(local_rtsp.rtsp_url, video_name, reload_config=is_last)
+                if is_last:
+                    print(f"[LOAD] [{stream_name}] Config reload sent (SIGUSR1)")
+
+            # Phase 2: Start ALL FFmpeg processes now that config is stable
+            print(f"[LOAD] [{stream_name}] Phase 2: Starting {total} FFmpeg processes...")
+            for j, (local_rtsp, video_name) in enumerate(stream_managers):
+                print(f"[LOAD] [{stream_name}] FFmpeg {j+1}/{total}: {video_name}")
                 await local_rtsp.start()
-                
                 stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
             
-            print(f"[SERVER] Stream mappings: {stream_mappings}")
+            elapsed = time.time() - t_start
+            print(f"[LOAD] ========== '{stream_name}' complete ({total} streams in {elapsed:.1f}s) ==========")
+            print(f"[LOAD] [{stream_name}] Active managers: {list(active_stream_managers.keys())}")
 
             stream_mappings[stream_name] = jsonable_encoder(stream_mappings[stream_name])
 
             return JSONResponse(status_code=200, content=stream_mappings[stream_name])
 
         else: 
+            print(f"[LOAD] [{stream_name}] Not found in presets, returning empty")
             return JSONResponse(status_code=200, content=[])
 
 async def get_stream(request: fastapi.Request):
