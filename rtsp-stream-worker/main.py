@@ -137,7 +137,6 @@ class RemuxServer:
 
             central_config = {
                 'hlsSegmentDuration': '2s',      # Segment duration
-                'hlsPartDuration': '200ms',      # LL-HLS part duration for faster initial load
                 'hlsSegmentCount': 3,            # Fewer segments = less memory per muxer
                 'hlsAllowOrigin': '*',           # Allow CORS
                 'hlsAlwaysRemux': False,         # Only create HLS muxers when clients watch (saves GB of RAM)
