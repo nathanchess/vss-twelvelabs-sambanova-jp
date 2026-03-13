@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 config_lock = asyncio.Lock()
+stream_load_lock = asyncio.Lock()  # Serializes load_stream requests to prevent race conditions
 
 # Container Variables
 central_server = None
@@ -469,38 +470,42 @@ async def load_stream(request: fastapi.Request):
     if stream_name in stream_mappings:
         return JSONResponse(status_code=200, content=stream_mappings[stream_name])
 
-    if stream_name in preset_video_files:
+    async with stream_load_lock:
+        # Re-check after acquiring lock (another request may have loaded this stream)
+        if stream_name in stream_mappings:
+            return JSONResponse(status_code=200, content=stream_mappings[stream_name])
 
-        file_urls = preset_video_files[stream_name]
+        if stream_name in preset_video_files:
 
-        if not stream_name in stream_mappings:
-            stream_mappings[stream_name] = []
+            file_urls = preset_video_files[stream_name]
 
-        for video_file_path, video_name in file_urls:
-            print(f"[SERVER] Adding stream {stream_name} with video file path {video_name}")
+            if not stream_name in stream_mappings:
+                stream_mappings[stream_name] = []
 
-            # Stop existing stream if it exists to prevent leak
-            if video_name in active_stream_managers:
-                print(f"[SERVER] Stopping existing stream {video_name}")
-                await active_stream_managers[video_name].cleanup()
+            for video_file_path, video_name in file_urls:
+                print(f"[SERVER] Adding stream {stream_name} with video file path {video_name}")
 
-            local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
-            active_stream_managers[video_name] = local_rtsp
+                # Stop existing stream if it exists to prevent leak
+                if video_name in active_stream_managers:
+                    print(f"[SERVER] Stopping existing stream {video_name}")
+                    await active_stream_managers[video_name].cleanup()
 
-            await central_server.add_stream(local_rtsp.rtsp_url, video_name)
-            await local_rtsp.start()
+                local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
+                active_stream_managers[video_name] = local_rtsp
+
+                await central_server.add_stream(local_rtsp.rtsp_url, video_name)
+                await local_rtsp.start()
+                
+                stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
             
-            stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
-        
-        print(f"[SERVER] Stream mappings: {stream_mappings}")
+            print(f"[SERVER] Stream mappings: {stream_mappings}")
 
-        stream_mappings[stream_name] = jsonable_encoder(stream_mappings[stream_name])
+            stream_mappings[stream_name] = jsonable_encoder(stream_mappings[stream_name])
 
-        return JSONResponse(status_code=200, content=stream_mappings[stream_name])
+            return JSONResponse(status_code=200, content=stream_mappings[stream_name])
 
-    else: 
-
-        return JSONResponse(status_code=200, content=[])
+        else: 
+            return JSONResponse(status_code=200, content=[])
 
 async def get_stream(request: fastapi.Request):
 
