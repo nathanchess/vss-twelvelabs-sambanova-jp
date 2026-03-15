@@ -43,6 +43,9 @@ AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_SOURCE_S3_BUCKET=your-bucket-name
+
+# Stream limits (optional, default 4) - max concurrent FFmpeg streams to avoid CPU overload
+MAX_CONCURRENT_STREAMS=4
 ```
 
 ### 3. Running the Container
@@ -89,6 +92,15 @@ curl http://localhost:8000/health
 docker logs rtsp-stream-worker
 ```
 
+## Stream limits and CPU
+
+Each preset (e.g. MachineryFactory, JapanConstruction) starts multiple FFmpeg transcoders (one per video). Loading several presets at once can exhaust CPU. To prevent this:
+
+- **MAX_CONCURRENT_STREAMS** (env, default `4`): Maximum number of concurrent FFmpeg streams.
+- **Automatic unloading**: When you load a preset and the limit would be exceeded, the backend automatically unloads other presets (in order) until there is room, then loads as many streams from the requested preset as fit within the cap.
+- **No errors to frontend**: `load_stream` always returns 200 with a list of HLS URLs. If the preset has more streams than the cap, only the first N (up to `MAX_CONCURRENT_STREAMS`) are started and returned; the frontend just gets fewer streams.
+- **Docker**: `docker-compose.yml` sets a 2 CPU cap per container; adjust `cpus` and `MAX_CONCURRENT_STREAMS` for your instance size.
+
 ## API Endpoints
 
 ### Health Check
@@ -125,6 +137,17 @@ Content-Type: application/json
 
 {
   "stream_name": "your-stream-name"
+}
+```
+
+### Unload Stream (optional)
+Stops all FFmpeg streams for a preset. Not required for switching presets—the backend auto-unloads others when at `MAX_CONCURRENT_STREAMS`.
+```
+POST /unload_stream
+Content-Type: application/json
+
+{
+  "stream_name": "MachineryFactory"
 }
 ```
 

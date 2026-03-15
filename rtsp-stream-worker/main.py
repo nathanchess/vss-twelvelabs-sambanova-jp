@@ -30,7 +30,9 @@ stream_load_lock = asyncio.Lock()  # Serializes load_stream requests to prevent 
 central_server = None
 directory_path = os.path.dirname(__file__)
 stream_mappings = {}
-active_stream_managers = {} # New: Track RTSPStreamManager instances
+active_stream_managers = {}  # Track RTSPStreamManager instances (keyed by video_name)
+# Global cap on concurrent FFmpeg streams to avoid CPU overload (e.g. 15 streams = 15 transcoders)
+MAX_CONCURRENT_STREAMS = int(os.getenv("MAX_CONCURRENT_STREAMS", "4"))
 processing_status = {}  
 preset_video_files = {
     "TextileFactory": [
@@ -411,6 +413,22 @@ async def main():
     finally:
         await central_server.cleanup()
 
+async def _unload_preset_under_lock(stream_name: str):
+    """Unload one preset (stop all its streams). Caller must hold stream_load_lock."""
+    if stream_name not in preset_video_files or stream_name not in stream_mappings:
+        return []
+    file_urls = preset_video_files[stream_name]
+    stopped = []
+    for _path, video_name in file_urls:
+        if video_name in active_stream_managers:
+            await active_stream_managers[video_name].cleanup()
+            del active_stream_managers[video_name]
+            stopped.append(video_name)
+    del stream_mappings[stream_name]
+    print(f"[LOAD] Auto-unloaded preset '{stream_name}' to make room: stopped {stopped}")
+    return stopped
+
+
 async def load_stream(request: fastapi.Request):
     global central_server
 
@@ -434,14 +452,25 @@ async def load_stream(request: fastapi.Request):
 
             file_urls = preset_video_files[stream_name]
             total = len(file_urls)
+            current_stream_count = len(active_stream_managers)
+            existing_in_preset = sum(1 for (_, video_name) in file_urls if video_name in active_stream_managers)
+            new_from_this_preset = total - existing_in_preset
+
+            # Auto-unload other presets until we have room (frontend does not need to call unload)
+            other_presets = [s for s in list(stream_mappings.keys()) if s != stream_name and s in preset_video_files]
+            while current_stream_count + new_from_this_preset > MAX_CONCURRENT_STREAMS and other_presets:
+                unload_target = other_presets.pop(0)
+                await _unload_preset_under_lock(unload_target)
+                current_stream_count = len(active_stream_managers)
+
             t_start = time.time()
-            print(f"[LOAD] ========== Loading '{stream_name}' ({total} streams) ==========")
-
-            if not stream_name in stream_mappings:
-                stream_mappings[stream_name] = []
-
-            # Register all streams and start FFmpeg processes
+            stream_mappings[stream_name] = []
+            # Start as many streams as we can up to MAX_CONCURRENT_STREAMS; never return 503
             for i, (video_file_path, video_name) in enumerate(file_urls):
+                if len(active_stream_managers) >= MAX_CONCURRENT_STREAMS and video_name not in active_stream_managers:
+                    print(f"[LOAD] [{stream_name}] At stream cap ({MAX_CONCURRENT_STREAMS}), skipping {video_name}")
+                    continue
+
                 print(f"[LOAD] [{stream_name}] Stream {i+1}/{total}: {video_name}")
 
                 # Stop existing stream if it exists to prevent leak
@@ -455,9 +484,10 @@ async def load_stream(request: fastapi.Request):
                 await central_server.add_stream(local_rtsp.rtsp_url, video_name)
                 await local_rtsp.start()
                 stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
-            
+
+            started = len(stream_mappings[stream_name])
             elapsed = time.time() - t_start
-            print(f"[LOAD] ========== '{stream_name}' complete ({total} streams in {elapsed:.1f}s) ==========")
+            print(f"[LOAD] ========== '{stream_name}' complete ({started}/{total} streams in {elapsed:.1f}s, max={MAX_CONCURRENT_STREAMS}) ==========")
             print(f"[LOAD] [{stream_name}] Active managers: {list(active_stream_managers.keys())}")
 
             stream_mappings[stream_name] = jsonable_encoder(stream_mappings[stream_name])
@@ -482,6 +512,31 @@ async def get_stream(request: fastapi.Request):
         return JSONResponse(status_code=200, content=jsonable_encoder([]))
     
     return JSONResponse(status_code=200, content=jsonable_encoder(stream_mappings[stream_name]))
+
+
+async def unload_stream(request: fastapi.Request):
+    """Stop all FFmpeg streams for a preset and free stream slots. (Optional; load_stream auto-unloads others when at limit.)"""
+    global central_server
+
+    if central_server is None:
+        return fastapi.Response(status_code=503, content="Server not initialized yet")
+
+    data = await request.json()
+    stream_name = data.get('stream_name')
+    if not stream_name:
+        return JSONResponse(status_code=400, content=jsonable_encoder({"error": "Missing stream_name"}))
+
+    if stream_name not in preset_video_files:
+        return JSONResponse(status_code=400, content=jsonable_encoder({"error": f"Unknown preset: {stream_name}"}))
+
+    async with stream_load_lock:
+        stopped = await _unload_preset_under_lock(stream_name)
+
+    print(f"[UNLOAD] [{stream_name}] Stopped streams: {stopped}, active managers: {list(active_stream_managers.keys())}")
+    return JSONResponse(
+        status_code=200,
+        content=jsonable_encoder({"message": "Streams stopped", "stream_name": stream_name, "stopped": stopped}),
+    )
 
 async def _upload_chunk(chunk_file_path: str):
     """Upload a single chunk file to NVIDIA VSS asynchronously"""
@@ -802,6 +857,7 @@ async def run_server():
     
     app.post("/load_stream")(load_stream)
     app.post("/get_stream")(get_stream)
+    app.post("/unload_stream")(unload_stream)
     app.post("/add_stream")(add_stream)
     app.post("/get_processing_status")(get_processing_status)
 

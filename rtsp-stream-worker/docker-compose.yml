@@ -18,3 +18,4 @@ services:
       resources:
         limits:
           memory: 4G
+          cpus: '2'   # Cap CPU so one container cannot peg the host; tune with MAX_CONCURRENT_STREAMS
