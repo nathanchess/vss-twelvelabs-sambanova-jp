@@ -33,6 +33,9 @@ stream_mappings = {}
 active_stream_managers = {}  # Track RTSPStreamManager instances (keyed by video_name)
 # Global cap on concurrent FFmpeg streams to avoid CPU overload (e.g. 15 streams = 15 transcoders)
 MAX_CONCURRENT_STREAMS = int(os.getenv("MAX_CONCURRENT_STREAMS", "4"))
+# Seconds to protect a preset from being auto-unloaded after load (avoids 404s when frontend gets URLs then a rapid load of another preset tears them down)
+PRESET_GRACE_SECONDS = float(os.getenv("PRESET_GRACE_SECONDS", "45"))
+preset_loaded_at = {}  # stream_name -> time when we finished loading it
 processing_status = {}  
 preset_video_files = {
     "TextileFactory": [
@@ -425,81 +428,83 @@ async def _unload_preset_under_lock(stream_name: str):
             del active_stream_managers[video_name]
             stopped.append(video_name)
     del stream_mappings[stream_name]
-    print(f"[LOAD] Auto-unloaded preset '{stream_name}' to make room: stopped {stopped}")
+    preset_loaded_at.pop(stream_name, None)
+    print(f"[STREAM] Auto-unloaded preset '{stream_name}' to make room: stopped {stopped}")
     return stopped
 
 
-async def load_stream(request: fastapi.Request):
-    global central_server
+def _preset_can_be_unloaded(stream_name: str) -> bool:
+    """True if this preset is not in grace period and can be auto-unloaded."""
+    loaded_at = preset_loaded_at.get(stream_name)
+    if loaded_at is None:
+        return True
+    return (time.time() - loaded_at) >= PRESET_GRACE_SECONDS
 
-    if central_server is None:
-        return fastapi.Response(status_code=503, content="Server not initialized yet")
 
-    data = await request.json()
-
-    stream_name, public_file_url = data.get('stream_name'), data.get('public_file_url')
-
+async def _ensure_preset_loaded_under_lock(stream_name: str):
+    """
+    Ensure a preset is loaded and return its HLS URL list. Caller must hold stream_load_lock.
+    If already loaded, return cached URLs. If a known preset, unload others as needed (respecting
+    grace period and MAX_CONCURRENT_STREAMS), start streams, return URLs. Otherwise return [].
+    """
     if stream_name in stream_mappings:
-        return JSONResponse(status_code=200, content=stream_mappings[stream_name])
+        return jsonable_encoder(stream_mappings[stream_name])
 
-    async with stream_load_lock:
-        # Re-check after acquiring lock (another request may have loaded this stream)
-        if stream_name in stream_mappings:
-            print(f"[LOAD] [{stream_name}] Already loaded (cache hit after lock)")
-            return JSONResponse(status_code=200, content=stream_mappings[stream_name])
+    if stream_name not in preset_video_files:
+        return jsonable_encoder([])
 
-        if stream_name in preset_video_files:
+    file_urls = preset_video_files[stream_name]
+    total = len(file_urls)
+    current_stream_count = len(active_stream_managers)
+    existing_in_preset = sum(1 for (_, video_name) in file_urls if video_name in active_stream_managers)
+    new_from_this_preset = total - existing_in_preset
 
-            file_urls = preset_video_files[stream_name]
-            total = len(file_urls)
-            current_stream_count = len(active_stream_managers)
-            existing_in_preset = sum(1 for (_, video_name) in file_urls if video_name in active_stream_managers)
-            new_from_this_preset = total - existing_in_preset
+    # Auto-unload other presets until we have room; skip presets still in grace period
+    other_presets = [s for s in list(stream_mappings.keys()) if s != stream_name and s in preset_video_files and _preset_can_be_unloaded(s)]
+    in_grace = [s for s in stream_mappings.keys() if s != stream_name and s in preset_video_files and not _preset_can_be_unloaded(s)]
+    if in_grace and current_stream_count + new_from_this_preset > MAX_CONCURRENT_STREAMS:
+        print(f"[GET_STREAM] [{stream_name}] Presets in grace period (won't unload): {in_grace}; will start up to {max(0, MAX_CONCURRENT_STREAMS - current_stream_count)} streams")
+    while current_stream_count + new_from_this_preset > MAX_CONCURRENT_STREAMS and other_presets:
+        unload_target = other_presets.pop(0)
+        await _unload_preset_under_lock(unload_target)
+        current_stream_count = len(active_stream_managers)
 
-            # Auto-unload other presets until we have room (frontend does not need to call unload)
-            other_presets = [s for s in list(stream_mappings.keys()) if s != stream_name and s in preset_video_files]
-            while current_stream_count + new_from_this_preset > MAX_CONCURRENT_STREAMS and other_presets:
-                unload_target = other_presets.pop(0)
-                await _unload_preset_under_lock(unload_target)
-                current_stream_count = len(active_stream_managers)
+    t_start = time.time()
+    stream_mappings[stream_name] = []
+    for i, (video_file_path, video_name) in enumerate(file_urls):
+        if len(active_stream_managers) >= MAX_CONCURRENT_STREAMS and video_name not in active_stream_managers:
+            print(f"[GET_STREAM] [{stream_name}] At stream cap ({MAX_CONCURRENT_STREAMS}), skipping {video_name}")
+            continue
 
-            t_start = time.time()
-            stream_mappings[stream_name] = []
-            # Start as many streams as we can up to MAX_CONCURRENT_STREAMS; never return 503
-            for i, (video_file_path, video_name) in enumerate(file_urls):
-                if len(active_stream_managers) >= MAX_CONCURRENT_STREAMS and video_name not in active_stream_managers:
-                    print(f"[LOAD] [{stream_name}] At stream cap ({MAX_CONCURRENT_STREAMS}), skipping {video_name}")
-                    continue
+        print(f"[GET_STREAM] [{stream_name}] Stream {i+1}/{total}: {video_name}")
 
-                print(f"[LOAD] [{stream_name}] Stream {i+1}/{total}: {video_name}")
+        if video_name in active_stream_managers:
+            print(f"[GET_STREAM] [{stream_name}] Cleaning up old stream: {video_name}")
+            await active_stream_managers[video_name].cleanup()
 
-                # Stop existing stream if it exists to prevent leak
-                if video_name in active_stream_managers:
-                    print(f"[LOAD] [{stream_name}] Cleaning up old stream: {video_name}")
-                    await active_stream_managers[video_name].cleanup()
+        local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
+        active_stream_managers[video_name] = local_rtsp
 
-                local_rtsp = RTSPStreamManager(video_file_path=video_file_path, stream_name=video_name)
-                active_stream_managers[video_name] = local_rtsp
+        await central_server.add_stream(local_rtsp.rtsp_url, video_name)
+        await local_rtsp.start()
+        stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
 
-                await central_server.add_stream(local_rtsp.rtsp_url, video_name)
-                await local_rtsp.start()
-                stream_mappings[stream_name].append(f'{central_server.hls_public_url}/{video_name}/index.m3u8')
+    started = len(stream_mappings[stream_name])
+    elapsed = time.time() - t_start
+    preset_loaded_at[stream_name] = time.time()
+    print(f"[GET_STREAM] ========== '{stream_name}' complete ({started}/{total} streams in {elapsed:.1f}s, max={MAX_CONCURRENT_STREAMS}) ==========")
+    print(f"[GET_STREAM] [{stream_name}] Active managers: {list(active_stream_managers.keys())}")
 
-            started = len(stream_mappings[stream_name])
-            elapsed = time.time() - t_start
-            print(f"[LOAD] ========== '{stream_name}' complete ({started}/{total} streams in {elapsed:.1f}s, max={MAX_CONCURRENT_STREAMS}) ==========")
-            print(f"[LOAD] [{stream_name}] Active managers: {list(active_stream_managers.keys())}")
+    return jsonable_encoder(stream_mappings[stream_name])
 
-            stream_mappings[stream_name] = jsonable_encoder(stream_mappings[stream_name])
-
-            return JSONResponse(status_code=200, content=stream_mappings[stream_name])
-
-        else: 
-            print(f"[LOAD] [{stream_name}] Not found in presets, returning empty")
-            return JSONResponse(status_code=200, content=[])
 
 async def get_stream(request: fastapi.Request):
-
+    """
+    Get (and load if needed) streams for a preset. When the user clicks a factory site, call this:
+    - If the preset is already loaded, returns its HLS URLs.
+    - If not loaded, loads it (unloading other presets as needed under the cap), then returns URLs.
+    So this is the single entry point: one call both ensures the preset is active and returns viewable URLs.
+    """
     global central_server
 
     if central_server is None:
@@ -507,11 +512,17 @@ async def get_stream(request: fastapi.Request):
 
     data = await request.json()
     stream_name = data.get('stream_name')
-
-    if stream_name not in stream_mappings:
+    if not stream_name:
         return JSONResponse(status_code=200, content=jsonable_encoder([]))
-    
-    return JSONResponse(status_code=200, content=jsonable_encoder(stream_mappings[stream_name]))
+
+    async with stream_load_lock:
+        content = await _ensure_preset_loaded_under_lock(stream_name)
+    return JSONResponse(status_code=200, content=content)
+
+
+async def load_stream(request: fastapi.Request):
+    """Same behavior as get_stream: ensures preset is loaded and returns its HLS URLs. Kept for backward compatibility."""
+    return await get_stream(request)
 
 
 async def unload_stream(request: fastapi.Request):

@@ -46,6 +46,9 @@ AWS_SOURCE_S3_BUCKET=your-bucket-name
 
 # Stream limits (optional, default 4) - max concurrent FFmpeg streams to avoid CPU overload
 MAX_CONCURRENT_STREAMS=4
+
+# Grace period in seconds (optional, default 45) - after loading a preset, it won't be auto-unloaded for this long (avoids 404s when frontend gets URLs then another load_stream tears them down)
+PRESET_GRACE_SECONDS=45
 ```
 
 ### 3. Running the Container
@@ -97,8 +100,10 @@ docker logs rtsp-stream-worker
 Each preset (e.g. MachineryFactory, JapanConstruction) starts multiple FFmpeg transcoders (one per video). Loading several presets at once can exhaust CPU. To prevent this:
 
 - **MAX_CONCURRENT_STREAMS** (env, default `4`): Maximum number of concurrent FFmpeg streams.
-- **Automatic unloading**: When you load a preset and the limit would be exceeded, the backend automatically unloads other presets (in order) until there is room, then loads as many streams from the requested preset as fit within the cap.
-- **No errors to frontend**: `load_stream` always returns 200 with a list of HLS URLs. If the preset has more streams than the cap, only the first N (up to `MAX_CONCURRENT_STREAMS`) are started and returned; the frontend just gets fewer streams.
+- **get_stream is the main entry point**: When the user opens a factory, call `POST /get_stream` with that preset name. The backend loads the preset if it isn’t loaded (unloading others as needed), then returns the HLS URLs. So clicking a factory always loads it and returns viewable URLs; no separate “load” then “get” step.
+- **Automatic unloading**: When loading would exceed the cap, the backend automatically unloads other presets (respecting the grace period) until there is room, then starts as many streams from the requested preset as fit.
+- **No errors to frontend**: Responses are always 200 with a list of HLS URLs (possibly fewer than the preset’s total if at cap).
+- **Grace period**: After a preset is loaded, it is not auto-unloaded for `PRESET_GRACE_SECONDS` (default 45s), reducing 404s when the user switches quickly.
 - **Docker**: `docker-compose.yml` sets a 2 CPU cap per container; adjust `cpus` and `MAX_CONCURRENT_STREAMS` for your instance size.
 
 ## API Endpoints
@@ -120,7 +125,20 @@ Content-Type: application/json
 }
 ```
 
-### Load Stream (Preset Videos)
+### Get Stream (main entry point – load on demand)
+When the user clicks a factory site, call **get_stream**. It returns that preset’s HLS URLs and **loads the preset if it isn’t already loaded** (unloading other presets as needed under the cap). So one call both ensures the streams are running and returns the URLs to play.
+```
+POST /get_stream
+Content-Type: application/json
+
+{
+  "stream_name": "JapanConstruction"
+}
+```
+Returns `200` and a list of HLS URLs (e.g. `["https://.../Japan-Forklift-1/index.m3u8", ...]`). If the preset was unloaded earlier, it is loaded again automatically.
+
+### Load Stream (alias)
+`POST /load_stream` with the same body does the same thing as `get_stream` (kept for backward compatibility).
 ```
 POST /load_stream
 Content-Type: application/json
@@ -130,18 +148,8 @@ Content-Type: application/json
 }
 ```
 
-### Get Stream
-```
-POST /get_stream
-Content-Type: application/json
-
-{
-  "stream_name": "your-stream-name"
-}
-```
-
 ### Unload Stream (optional)
-Stops all FFmpeg streams for a preset. Not required for switching presets—the backend auto-unloads others when at `MAX_CONCURRENT_STREAMS`.
+Stops all FFmpeg streams for a preset. Not required for switching—get_stream/load_stream auto-unload others when at `MAX_CONCURRENT_STREAMS`.
 ```
 POST /unload_stream
 Content-Type: application/json
