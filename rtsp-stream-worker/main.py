@@ -98,7 +98,7 @@ class RemuxServer:
         """ Cloudflare tunnel has been removed for security reasons. 
         It was bypassing AWS Security Groups and exposing the service to the internet.
         """
-        self.hls_public_url = "https://tl-vss-compliance-demo.com"
+        self.hls_public_url = "https://tl-vss-compliance-demo.com/hls"
         print(f'[SERVER] Using domain URL: {self.hls_public_url}')
         
     async def start(self):
@@ -114,7 +114,7 @@ class RemuxServer:
                 'hlsPartDuration': '200ms',      # LL-HLS part duration for faster initial load
                 'hlsSegmentCount': 7,            # Keep more segments in playlist for buffer stability
                 'hlsSegmentMaxSize': '50M',      # Max segment size
-                'hlsAllowOrigin': '*',           # Allow CORS
+                'hlsAllowOrigin': 'https://tl-vss-compliance-demo.com, http://localhost:3000, http://127.0.0.1:3000', # Secure CORS Origins
                 'hlsAlwaysRemux': True,          # Keep HLS muxer alive even with no clients (prevents gap.mp4)
                 'paths': {
                     'all_others': {},            # Wildcard: accept ANY publisher on any path without config reload

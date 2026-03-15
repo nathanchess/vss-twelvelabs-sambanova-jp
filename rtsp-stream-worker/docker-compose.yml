@@ -5,6 +5,7 @@ services:
     image: rtsp-stream-worker:latest
     ports:
       - "8000:8000" # FastAPI server
+      - "8888:8888" # MediaMTX HLS server
     env_file:
       - .env
     restart: unless-stopped
