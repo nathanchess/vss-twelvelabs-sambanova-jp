@@ -95,37 +95,11 @@ class RemuxServer:
         self._shutdown = False
 
     async def _start_cloudflare_tunnel(self):
-
-        """ Initiate a Cloudflare tunnel into container for reverse SSH tunneling """
-
-        self.cloudflared_process = await asyncio.create_subprocess_exec(
-            "cloudflared",
-            "tunnel",
-            "--url", "http://localhost:8888",
-            "--no-autoupdate",
-            "--no-tls-verify",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        while self.hls_public_url is None:
-            line = await self.cloudflared_process.stderr.readline()
-            if not line:
-                break
-            line_str = line.decode('utf-8').strip()
-            print(f"[cloudflared] {line_str}") # Print logs for debugging
-
-            # Use regex to find the temporary cloudflare URL
-            if '.trycloudflare.com' in line_str:
-                words = line_str.split()
-                for word in words:
-                    if word.startswith('https://') and word.endswith('.trycloudflare.com'):
-                        self.hls_public_url = word
-                        print(f'[SERVER] Captured Cloudflare URL: {self.hls_public_url}')
-                        break 
-        
-        if self.hls_public_url is None:
-            raise Exception('Failed to capture Cloudflare URL')
+        """ Cloudflare tunnel has been removed for security reasons. 
+        It was bypassing AWS Security Groups and exposing the service to the internet.
+        """
+        self.hls_public_url = "https://tl-vss-compliance-demo.com"
+        print(f'[SERVER] Using domain URL: {self.hls_public_url}')
         
     async def start(self):
 
@@ -136,10 +110,12 @@ class RemuxServer:
         async with config_lock:
 
             central_config = {
-                'hlsSegmentDuration': '2s',      # Segment duration
-                'hlsSegmentCount': 7,            # LL-HLS requires minimum 7
+                'hlsSegmentDuration': '2s',      # Segment duration (matches FFmpeg GOP of 30 frames @ 30fps = 1s, so 2 GOPs per segment)
+                'hlsPartDuration': '200ms',      # LL-HLS part duration for faster initial load
+                'hlsSegmentCount': 7,            # Keep more segments in playlist for buffer stability
+                'hlsSegmentMaxSize': '50M',      # Max segment size
                 'hlsAllowOrigin': '*',           # Allow CORS
-                'hlsAlwaysRemux': False,         # Only create HLS muxers when clients watch (saves GB of RAM)
+                'hlsAlwaysRemux': True,          # Keep HLS muxer alive even with no clients (prevents gap.mp4)
                 'paths': {
                     'all_others': {},            # Wildcard: accept ANY publisher on any path without config reload
                 },
@@ -253,20 +229,46 @@ class RTSPStreamManager:
             ffmpeg_command = [
                 'ffmpeg',
 
-                # --- Global Options ---
+                # --- Global Options (Section 5.2 of ffmpeg docs) ---
                 '-hide_banner', '-loglevel', 'error',
 
-                # --- Input Options ---
+                # --- Input Options (Section 5.4 of ffmpeg docs) ---
                 '-re',                                   # Read input at native frame rate
                 '-stream_loop', '-1',                    # Loop input infinitely
                 '-i', self.video_file_path,
 
-                # --- Codec: copy (remux only, no re-encoding = ~1% CPU per stream) ---
-                '-c', 'copy',
+                # --- Video Output Options ---
+                '-vf', 'scale=1280:720',                 # Scale filter (Section 3.3.1)
+                '-r', '30',                              # Output frame rate (Section 5.5)
+                '-vsync', 'cfr',                         # Constant frame rate (FFmpeg 4.x compatible)
+                '-c:v', 'libx264',                       # Video codec (Section 5.4)
 
-                # --- Output ---
+                # --- libx264 Options (Section 9.19.2 of ffmpeg-codecs) ---
+                '-preset', 'ultrafast',                  # Encoding preset (9.19.2)
+                '-tune', 'zerolatency',                  # Tuning for low latency (9.19.2)
+                '-profile:v', 'baseline',                # Profile restrictions (9.19.2)
+                '-level', '3.1',                         # Level (9.19.2)
+                '-g', '30',                              # GOP size (9.19.2: g/keyint)
+                '-keyint_min', '30',                     # Min GOP size (9.19.2)
+                '-bf', '0',                              # No B-frames for low latency (9.19.2)
+
+                # --- x264-params for x264-specific options (9.19.2) ---
+                '-x264-params', 'scenecut=0',            # Disable scene change detection
+
+                # --- Codec Options (Section 2 of ffmpeg-codecs) ---
+                '-b:v', '1000k',                         # Video bitrate (Section 2: b)
+                '-maxrate', '1200k',                     # Max bitrate (Section 2: maxrate)
+                '-bufsize', '2000k',                     # Buffer size (Section 2: bufsize)
+                '-pix_fmt', 'yuv420p',                   # Pixel format (Section 5.6)
+
+                # --- Audio Output Options (Section 5.7/8.1 of ffmpeg-codecs) ---
+                '-c:a', 'aac',                           # AAC encoder (Section 8.1)
+                '-b:a', '96k',                           # Audio bitrate (Section 8.1.1)
+                '-ar', '44100',                          # Sample rate (Section 5.7)
+                '-ac', '2',                              # Channels (Section 5.7)
+
+                # --- Output (Section 5.4) ---
                 '-f', 'rtsp',
-                '-rtsp_transport', 'tcp',
                 mediamtx_url
             ]
 
