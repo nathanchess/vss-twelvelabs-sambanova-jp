@@ -156,19 +156,21 @@ export default function Clips() {
             <UploadVideo />
 
             {/* Clip Cards */}
-            {filteredClipData && (Array.isArray(filteredClipData) ? filteredClipData : Object.values(filteredClipData)).map((clip, index) => (
-              <ClipCard
-                key={index}
-                vss_id={clip.vss_id}
-                video_url={clip.hls.video_url}
-                thumbnail_url={clip.hls.thumbnail_urls[0]}
-                createdAt={clip.createdAt}
-                duration={clip.duration}
-                name={clip.filename}
-                searchScore={clip.searchScore}
-                searchConfidence={clip.searchConfidence}
-              />
-            ))}
+            {filteredClipData && (
+              (Array.isArray(filteredClipData) ? filteredClipData : Object.values(filteredClipData)).map((clip) => (
+                <ClipCard
+                  key={clip.pegasusId || clip.vss_id || clip.filename}
+                  vss_id={clip.vss_id}
+                  video_url={clip.hls.video_url}
+                  thumbnail_url={clip.hls.thumbnail_urls[0]}
+                  createdAt={clip.createdAt}
+                  duration={clip.duration}
+                  name={clip.filename}
+                  searchScore={clip.searchScore}
+                  searchConfidence={clip.searchConfidence}
+                />
+              ))
+            )}
 
           </div>
         </div>
