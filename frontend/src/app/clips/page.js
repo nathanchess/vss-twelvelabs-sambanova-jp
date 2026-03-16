@@ -61,6 +61,14 @@ export default function Clips() {
 
       const data = await response.json();
 
+      // Debug: inspect first thumbnail URL for each clip
+      try {
+        const thumbs = Object.values(data || {}).map((c) => c?.hls?.thumbnail_urls?.[0]);
+        console.log('[Clips] Thumbnail URLs for clips:', thumbs);
+      } catch (e) {
+        console.warn('[Clips] Error logging thumbnail URLs:', e);
+      }
+
       // Check for empty HLS
       for (let fileName in data) {
         const fileData = data[fileName];
