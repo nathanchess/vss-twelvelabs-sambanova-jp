@@ -610,10 +610,16 @@ async def _upload_chunk(chunk_file_path: str):
             data.add_field('file', f, filename=os.path.basename(chunk_file_path), content_type='video/mp4')
             data.add_field('purpose', 'vision')
             data.add_field('media_type', 'video')
-            
+
             timeout = aiohttp.ClientTimeout(total=3000)  # 50 minute timeout for large files
+
+            # Propagate INTERNAL_API_KEY so NVIDIA VSS (via_server) can enforce the same shared secret
+            headers = {}
+            if INTERNAL_API_KEY:
+                headers[API_KEY_HEADER_NAME] = INTERNAL_API_KEY
+
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(f"{nvidia_vss_url}/files", data=data) as response:
+                async with session.post(f"{nvidia_vss_url}/files", data=data, headers=headers or None) as response:
                     if not response.ok:
                         response_text = await response.text()
                         print(f"[SERVER] Error uploading chunk to NVIDIA VSS: {response.status}")

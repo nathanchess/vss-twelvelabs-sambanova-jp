@@ -124,14 +124,16 @@ export default function FactoryPage() {
 
             console.log('Stream data:', streamData);
 
-            // Run RTSP stream worker API call in background (non-blocking)
-            const NEXT_PUBLIC_RTSP_STREAM_WORKER_URL = process.env.NEXT_PUBLIC_RTSP_STREAM_WORKER_URL;
-            fetch(`${NEXT_PUBLIC_RTSP_STREAM_WORKER_URL}/add_stream`, {
+            // Run RTSP stream worker API call in background (non-blocking) via server-side proxy
+            fetch(`/api/stream/add`, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     stream_name: streamName,
-                    s3_video_key: data.key
-                })
+                    s3_video_key: data.key,
+                }),
             })
                 .then(response => {
                     console.log('Add stream response:', response);
