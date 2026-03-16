@@ -32,10 +32,8 @@ RUN curl -L -o mediamtx.tar.gz https://github.com/bluenviron/mediamtx/releases/d
     mv mediamtx /usr/local/bin/ && \
     rm mediamtx.tar.gz
 
-# Install Cloudflared (tunnel)
-RUN curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
-    dpkg -i cloudflared.deb && \
-    rm cloudflared.deb
+# NOTE: Cloudflared was removed. The app uses a fixed domain (no tunnel from container).
+# Exposing origin via Cloudflare proxy + locking SG to Cloudflare IPs is the intended setup.
 
 # Set working directory
 WORKDIR /app

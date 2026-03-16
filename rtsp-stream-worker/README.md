@@ -12,6 +12,10 @@ A Docker-based service that processes video streams, uploads processed video chu
 - **RESTful API**: Provides endpoints for stream management and status monitoring
 - **CPU-Only Support**: No GPU required - runs on any server including AWS EC2
 
+## Security (lock down origin)
+
+To avoid exposing your EC2 to the whole internet, put the app behind **Cloudflare** and allow only **Cloudflare IPs** on ports 80/443 in the AWS security group. See **[SECURITY.md](SECURITY.md)** for step-by-step instructions.
+
 ## Prerequisites
 
 - Docker

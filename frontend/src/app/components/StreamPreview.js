@@ -30,6 +30,8 @@ export default function StreamPreview({
     const [hlsUrl, setHlsUrl] = useState(null);
     const [cameraCount, setCameraCount] = useState(0);
 
+    const API_KEY = process.env.NEXT_PUBLIC_INTERNAL_API_KEY;
+
     // Placeholder HLS URL for when activated
     const placeholderHlsUrl = `https://stream.example.com/live/${factoryId || 'factory'}.m3u8`;
 
@@ -50,6 +52,10 @@ export default function StreamPreview({
 
             const response = await fetch(`${NEXT_PUBLIC_RTSP_STREAM_WORKER_URL}/load_stream`, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY,
+                },
                 body: JSON.stringify({
                     stream_name: factoryId,
                     public_file_url: null
@@ -90,6 +96,10 @@ export default function StreamPreview({
         const NEXT_PUBLIC_RTSP_STREAM_WORKER_URL = process.env.NEXT_PUBLIC_RTSP_STREAM_WORKER_URL;
         const response = await fetch(`${NEXT_PUBLIC_RTSP_STREAM_WORKER_URL}/get_stream`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': API_KEY,
+            },
             body: JSON.stringify({ stream_name: factoryId })
         });
 

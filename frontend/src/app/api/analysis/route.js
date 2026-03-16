@@ -2,6 +2,8 @@ import { TwelveLabs, TwelvelabsApi } from 'twelvelabs-js';
 import { translate, translateObject } from '../translate/route';
 
 const twelvelabs_client = new TwelveLabs({ apiKey: process.env.TWELVELABS_API_KEY });
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || process.env.NEXT_PUBLIC_INTERNAL_API_KEY;
+const API_KEY_HEADER_NAME = 'X-API-Key';
 
 /**
  * Strip markdown code fences from a string if present
@@ -17,6 +19,14 @@ function stripMarkdownCodeFences(str) {
 export async function POST(request) {
 
     /* Request prompt to TwelveLabs Pegasus model and return response. */
+
+    // Simple API key guard so random bots cannot hammer this route
+    if (INTERNAL_API_KEY) {
+        const provided = request.headers.get(API_KEY_HEADER_NAME);
+        if (provided !== INTERNAL_API_KEY) {
+            return new Response(JSON.stringify({ detail: 'Forbidden' }), { status: 403 });
+        }
+    }
 
     const { userQuery, videoId, language } = await request.json();
 

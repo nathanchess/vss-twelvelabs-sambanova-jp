@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import yaml
 import signal
 import sys
@@ -24,7 +25,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 config_lock = asyncio.Lock()
+
+# Safe chars for stream_name when used in file paths (prevents path traversal)
+_STREAM_NAME_SAFE_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
+def _sanitize_stream_name_for_path(stream_name: str) -> str:
+    """Reject stream_name that could cause path traversal; allow only alphanumeric, underscore, hyphen."""
+    if not stream_name or not _STREAM_NAME_SAFE_RE.match(stream_name):
+        raise ValueError("stream_name must contain only letters, numbers, underscore, and hyphen")
+    return stream_name
 stream_load_lock = asyncio.Lock()  # Serializes load_stream requests to prevent race conditions
+
+# API key auth (simple shared secret between frontend and backend)
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "").strip()
+API_KEY_HEADER_NAME = "X-API-Key"
+EXEMPT_PATHS = {"/health"}  # health remains open for infra checks
+
+async def api_key_guard(request: fastapi.Request, call_next):
+    """Middleware to enforce INTERNAL_API_KEY on all non-health routes."""
+    if request.url.path in EXEMPT_PATHS:
+        return await call_next(request)
+
+    # If no key is configured at all, fail closed so we don't accidentally expose
+    if not INTERNAL_API_KEY:
+        return fastapi.responses.JSONResponse(
+            status_code=500,
+            content={"detail": "INTERNAL_API_KEY not configured on backend"},
+        )
+
+    provided = request.headers.get(API_KEY_HEADER_NAME)
+    if provided != INTERNAL_API_KEY:
+        return fastapi.responses.JSONResponse(
+            status_code=403,
+            content={"detail": "Forbidden"},
+        )
+
+    return await call_next(request)
 
 # Container Variables
 central_server = None
@@ -614,6 +649,10 @@ async def add_stream(request: fastapi.Request):
 
     if not stream_name or not s3_video_key:
         return JSONResponse(status_code=400, content=jsonable_encoder({"error": "Missing stream name or S3 video URL"}))
+    try:
+        stream_name = _sanitize_stream_name_for_path(stream_name)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content=jsonable_encoder({"error": str(e)}))
 
     # Start the processing task in the background
     asyncio.create_task(process_video_background(stream_name, s3_video_key))
@@ -862,6 +901,9 @@ async def run_server():
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    # API key middleware – applied to all non-health routes
+    app.middleware("http")(api_key_guard)
     @app.get("/health")
     async def health_check():
         return {"status": "healthy", "service": "rtsp-stream-worker"}
