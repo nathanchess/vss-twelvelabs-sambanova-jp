@@ -54,8 +54,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p temp preset
+# Create necessary directories and ensure they are writable by non-root user (uid 1000)
+RUN mkdir -p temp preset \
+ && chown -R 1000:1000 /app
 
 # Expose ports
 # 8000 = FastAPI server
