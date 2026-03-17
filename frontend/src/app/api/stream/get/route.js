@@ -27,12 +27,21 @@ export async function POST(request) {
         body: JSON.stringify(payload),
     });
 
-    const data = await resp.text();
+    let data = await resp.text();
     const responseHeaders = {
         'Content-Type': 'application/json',
-        // Debug: confirms whether this server had the key when proxying (remove in production if desired)
         'X-Proxy-Had-Key': INTERNAL_API_KEY ? 'yes' : 'no',
     };
+    // For 403, inject debug into body so you can see in browser Network tab (no server logs needed)
+    if (resp.status === 403) {
+        try {
+            const parsed = JSON.parse(data);
+            parsed._debug = { proxyHadKey: !!INTERNAL_API_KEY };
+            data = JSON.stringify(parsed);
+        } catch {
+            data = JSON.stringify({ detail: data, _debug: { proxyHadKey: !!INTERNAL_API_KEY } });
+        }
+    }
     return new Response(data, { status: resp.status, headers: responseHeaders });
 }
 
