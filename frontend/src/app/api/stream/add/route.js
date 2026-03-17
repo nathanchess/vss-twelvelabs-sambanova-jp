@@ -1,10 +1,15 @@
-const RTSP_STREAM_WORKER_URL = process.env.RTSP_STREAM_WORKER_URL;
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-const API_KEY_HEADER_NAME = 'X-API-Key';
-
 export async function POST(request) {
+    const RTSP_STREAM_WORKER_URL = (process.env.RTSP_STREAM_WORKER_URL || '').trim();
+    const INTERNAL_API_KEY = (process.env.INTERNAL_API_KEY || '').trim();
+    const API_KEY_HEADER_NAME = 'X-API-Key';
+
+    console.log('[api/stream/add] INTERNAL_API_KEY set:', !!INTERNAL_API_KEY);
+
     if (!RTSP_STREAM_WORKER_URL) {
         return new Response(JSON.stringify({ detail: 'RTSP_STREAM_WORKER_URL not configured' }), { status: 500 });
+    }
+    if (!INTERNAL_API_KEY) {
+        console.warn('[api/stream/add] INTERNAL_API_KEY is not set on this server — backend will return 403. Set INTERNAL_API_KEY in the environment where Next.js runs.');
     }
 
     const body = await request.json();

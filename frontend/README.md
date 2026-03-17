@@ -42,7 +42,9 @@ NEXT_PUBLIC_TWELVELABS_PEGASUS_INDEX_ID=""
 # SambaNova (Japanese Translation)
 SAMBANOVA_API_KEY=""
 
-# Services
+# Services (stream proxy — server-side only; do not use NEXT_PUBLIC_ for the key)
+RTSP_STREAM_WORKER_URL="http://localhost:8000"
+INTERNAL_API_KEY="your-shared-secret"
 NEXT_PUBLIC_RTSP_STREAM_WORKER_URL="http://localhost:8000/"
 ```
 
