@@ -14,6 +14,37 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { t } from '../lib/translations';
 
+// Precached HLS URLs per factory — no backend needed
+const PRESET_HLS_URLS = {
+    TextileFactory: [
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f5194436d5c05f8e73f590/stream/7e30db74-b1ad-4739-9575-4884609b11f7.m3u8', // ClothingLine
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f5097a50d73a53e9026eb0/stream/784306e2-f2ba-47b0-a8b3-420b2c402046.m3u8', // textile2
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f509191f2f3a5c7fba4c44/stream/c05f0089-e89a-420f-b10b-c60acd5c701a.m3u8', // textile1
+    ],
+    ConstructionSite: [
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f6656e13449bce96941e7e/stream/224779ae-e58a-44b1-9cd8-984ee0770c4a.m3u8', // Outside_Area
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f5090036d5c05f8e73f1c6/stream/730456ca-69db-45ac-a428-36fe10732207.m3u8', // OutsideConstruction
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f5088713449bce9693d609/stream/93b28240-75de-4303-a213-fe0895de7d8a.m3u8', // PipeWork
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f507eca66549584678d783/stream/901170f1-6722-478b-9898-000bd0b13b4f.m3u8', // BuildingConstruction
+    ],
+    MachineryFactory: [
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f563eef4b07b407a25c450/stream/f1cb1feb-7e9b-4534-abc5-164628bafae4.m3u8', // SugarLine_0000
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f563ecf4b07b407a25c44e/stream/aa4c3068-edf6-46eb-9d47-d8893a0f6f40.m3u8', // SugarLine_0003
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f563eaf4b07b407a25c44b/stream/6700486d-4e4d-4dbc-a46a-58c43b3ab8d4.m3u8', // SugarLine_0001
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f563e8f4b07b407a25c448/stream/9b61a98e-1d6b-499e-8480-5baeb6ff7fbd.m3u8', // SugarLine_0002
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f5622e1f2f3a5c7fba68fc/stream/35809177-b79e-46a4-8322-3554c98b65a7.m3u8', // FlameMetal
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/68f52abe50d73a53e9027708/stream/0b9f021c-fbf6-45cf-a2f5-718e98bdbd14.m3u8', // Steel
+    ],
+    JapanConstruction: [
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/69750e03a7d08a9a987efbae/stream/playlist.m3u8', // JapanForklift
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/69750e03af6d73889fd09995/stream/playlist.m3u8', // JapanSteelMaking
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/69750e017cff3af87ddb6d26/stream/playlist.m3u8', // JapanSteel
+        'https://deuqpmn4rs7j5.cloudfront.net/68395b68fb13a12412d8114b/69750e004da6ef1ab83fbe8e/stream/playlist.m3u8', // JapanPipe
+    ],
+};
+
+const FAKE_CONNECT_MS = 1500;
+
 export default function StreamPreview({
     thumbnail_url,
     title,
@@ -30,109 +61,50 @@ export default function StreamPreview({
     const [hlsUrl, setHlsUrl] = useState(null);
     const [cameraCount, setCameraCount] = useState(0);
 
-    // Placeholder HLS URL for when activated
-    const placeholderHlsUrl = `https://stream.example.com/live/${factoryId || 'factory'}.m3u8`;
+    const presetUrls = PRESET_HLS_URLS[factoryId] || [];
 
-
+    // Restore active state from localStorage (no API call)
     useEffect(() => {
-        verifyFactoryData();
-    }, []);
+        if (!factoryId) return;
+        try {
+            const stored = localStorage.getItem(factoryId);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed?.hlsUrls?.length > 0) {
+                    setActiveState(true);
+                    setHlsUrl(parsed.hlsUrls[0]);
+                    setCameraCount(parsed.hlsUrls.length);
+                }
+            }
+        } catch { /* ignore corrupted localStorage */ }
+    }, [factoryId]);
 
     const handleCardClick = async () => {
         if (activeState) {
-            // Navigate to detailed factory view
             router.push(`/${factoryId || 'unknown'}`);
-        } else if (!isActivating) {
-
+        } else if (!isActivating && presetUrls.length > 0) {
             setIsActivating(true);
 
-            const response = await fetch(`/api/stream/load`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    stream_name: factoryId,
-                    public_file_url: null,
-                }),
-            });
+            // Fake connection delay so the UI shows the "Activating…" state
+            await new Promise((resolve) => setTimeout(resolve, FAKE_CONNECT_MS));
 
-            if (!response.ok) {
-                console.error('Failed to activate factory:', response.statusText);
-                return;
-            }
-
-            const data = await response.json();
-
-            console.log('Factory activated:', data);
-
+            const hlsUrls = presetUrls;
             setActiveState(true);
             setIsActivating(false);
-            setHlsUrl(data[0]);
-            setCameraCount(data.length);
+            setHlsUrl(hlsUrls[0]);
+            setCameraCount(hlsUrls.length);
 
-            // Save stream data as JSON to localStorage
-            const streamData = {
-                hlsUrls: data,
-                cameraCount: data.length,
+            localStorage.setItem(factoryId, JSON.stringify({
+                hlsUrls,
+                cameraCount: hlsUrls.length,
                 title,
                 description,
                 thumbnail_url,
                 factoryId,
-                activatedAt: new Date().toISOString()
-            };
-            localStorage.setItem(factoryId, JSON.stringify(streamData));
-
+                activatedAt: new Date().toISOString(),
+            }));
         }
     };
-
-    const verifyFactoryData = async () => {
-
-        const response = await fetch(`/api/stream/get`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ stream_name: factoryId }),
-        });
-
-        const data = await response.json();
-
-        const streamData = {
-            hlsUrls: data,
-            cameraCount: data.length,
-            title,
-            description,
-            thumbnail_url,
-            factoryId,
-            activatedAt: new Date().toISOString()
-        };
-
-        if (data.length > 0) {
-            const storedData = localStorage.getItem(factoryId);
-            const parsedStoredData = storedData ? JSON.parse(storedData) : null;
-
-            if (parsedStoredData !== null && data[0] === parsedStoredData.hlsUrls[0]) {
-                setActiveState(true);
-                setIsActivating(false);
-                setHlsUrl(data[0]);
-                setCameraCount(parsedStoredData.hlsUrls.length);
-            } else {
-                setActiveState(true);
-                setIsActivating(false);
-                setHlsUrl(data[0]);
-                setCameraCount(data.length);
-                localStorage.setItem(factoryId, JSON.stringify(streamData));
-            }
-        } else {
-            setActiveState(false);
-            setIsActivating(false);
-            setHlsUrl(null);
-            setCameraCount(0);
-            localStorage.removeItem(factoryId);
-        }
-
-    }
 
     const handleViewClick = (e) => {
         e.stopPropagation(); // Prevent card click
